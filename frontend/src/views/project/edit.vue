@@ -223,7 +223,7 @@ const regionOptions = [
 const loadData = async () => {
   if (query.id) {
     try {
-      const res = await request<{ data: any }>({ url: `/api/project/${query.id}`, method: 'GET' })
+      const res = await request<{ data: any }>({ url: `/project/${query.id}`, method: 'GET' })
       if (res.data) {
         Object.assign(form, res.data)
       }

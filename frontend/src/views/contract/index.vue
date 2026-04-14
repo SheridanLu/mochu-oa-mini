@@ -107,7 +107,7 @@ const fetchList = async () => {
       contractName: filterForm.contractName || undefined,
       status: filterForm.status ? parseInt(filterForm.status) : undefined
     }
-    const res = await request<{ data: any }>({ url: '/api/contract/income/page', method: 'GET', params })
+    const res = await request<{ data: any }>({ url: '/contract/income/page', method: 'GET', params })
     tableData.value = res.data?.records || []
     pagination.total = res.data?.total || 0
   } catch (e: any) {
@@ -131,7 +131,7 @@ const handleRefresh = () => { fetchList(); ElMessage.success('刷新成功') }
 const handleSubmit = async (row: any) => {
   try {
     await ElMessageBox.confirm('提交后将进入审批流程（法务→总经理），确定提交？', '提示', { type: 'warning' })
-    await request({ url: `/api/contract/income/${row.id}/submit`, method: 'POST' })
+    await request({ url: `/contract/income/${row.id}/submit`, method: 'POST' })
     ElMessage.success('提交审批成功')
     fetchList()
   } catch (e: any) { if (e !== 'cancel') ElMessage.error(e.message || '提交失败') }

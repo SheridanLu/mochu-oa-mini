@@ -106,7 +106,7 @@ const userList = ref<any[]>([])
 
 const loadDeptTree = async () => {
   try {
-    const res = await request<{ data: any[] }>({ url: '/api/system/dept/tree', method: 'GET' })
+    const res = await request<{ data: any[] }>({ url: '/system/dept/tree', method: 'GET' })
     treeData.value = res.data || []
   } catch (e) {
     treeData.value = [
@@ -136,7 +136,7 @@ const loadDeptTree = async () => {
 
 const loadUserList = async () => {
   try {
-    const res = await request<{ data: any[] }>({ url: '/api/system/user/all', method: 'GET' })
+    const res = await request<{ data: any[] }>({ url: '/system/user/all', method: 'GET' })
     userList.value = res.data || []
   } catch (e) {
     userList.value = [

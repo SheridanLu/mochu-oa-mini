@@ -179,7 +179,7 @@ const rules = {
 const loadData = async () => {
   if (query.id) {
     try {
-      const res = await request<{ data: any }>({ url: `/api/supplier/${query.id}`, method: 'GET' })
+      const res = await request<{ data: any }>({ url: `/supplier/${query.id}`, method: 'GET' })
       if (res.data) Object.assign(form, res.data)
     } catch (e) { console.error('加载失败', e) }
   }
