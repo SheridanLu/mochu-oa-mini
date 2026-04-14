@@ -101,7 +101,7 @@ const pagination = reactive({ page: 1, size: 20, total: 0 })
 
 const loadData = async () => {
   try {
-    const res = await request<{ data: any[] }>({ url: '/api/system/role/list', method: 'GET' })
+    const res = await request<{ data: any[] }>({ url: '/system/role/list', method: 'GET' })
     tableData.value = res.data || []
     pagination.total = res.data?.length || 0
   } catch (e) {

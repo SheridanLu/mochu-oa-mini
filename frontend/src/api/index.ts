@@ -224,10 +224,10 @@ supplier: {
   },
   
   company: {
-    search: (params: any) => request({ url: '/api/company/search', method: 'GET', params }),
-    get: (id: number) => request({ url: `/api/company/${id}`, method: 'GET' }),
-    create: (data: any) => request({ url: '/api/company', method: 'POST', data }),
-    update: (data: any) => request({ url: '/api/company', method: 'PUT', data }),
+    search: (params: any) => request({ url: '/company/search', method: 'GET', params }),
+    get: (id: number) => request({ url: `/company/${id}`, method: 'GET' }),
+    create: (data: any) => request({ url: '/company', method: 'POST', data }),
+    update: (data: any) => request({ url: '/company', method: 'PUT', data }),
   },
   
   invoice: {
