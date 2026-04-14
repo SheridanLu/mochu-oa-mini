@@ -59,10 +59,18 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="角色名称" prop="roleName">
-          <el-input v-model="form.roleName" placeholder="请输入角色名称" />
+          <el-select v-model="form.roleName" placeholder="请选择角色" style="width: 100%" @change="handleRoleChange">
+            <el-option label="超级管理员" value="超级管理员" />
+            <el-option label="项目经理" value="项目经理" />
+            <el-option label="财务人员" value="财务人员" />
+            <el-option label="采购人员" value="采购人员" />
+            <el-option label="普通员工" value="普通员工" />
+            <el-option label="法务人员" value="法务人员" />
+            <el-option label="总经理" value="总经理" />
+          </el-select>
         </el-form-item>
         <el-form-item label="角色编码" prop="roleCode">
-          <el-input v-model="form.roleCode" placeholder="请输入角色编码" />
+          <el-input v-model="form.roleCode" placeholder="请输入角色编码" disabled />
         </el-form-item>
         <el-form-item label="角色描述">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入角色描述" />
@@ -101,9 +109,12 @@ const loadData = async () => {
       { id: 1, roleName: '超级管理员', roleCode: 'admin', description: '拥有系统所有权限', userCount: 2, status: 1, createTime: '2026-01-01 10:00:00' },
       { id: 2, roleName: '项目经理', roleCode: 'project_manager', description: '负责项目管理和进度跟踪', userCount: 5, status: 1, createTime: '2026-01-05 14:30:00' },
       { id: 3, roleName: '财务人员', roleCode: 'finance', description: '负责财务相关操作', userCount: 3, status: 1, createTime: '2026-01-10 09:20:00' },
-      { id: 4, roleName: '普通员工', roleCode: 'employee', description: '普通员工权限', userCount: 20, status: 1, createTime: '2026-01-15 16:45:00' }
+      { id: 4, roleName: '采购人员', roleCode: 'purchase', description: '负责采购相关操作', userCount: 4, status: 1, createTime: '2026-01-12 11:00:00' },
+      { id: 5, roleName: '普通员工', roleCode: 'employee', description: '普通员工权限', userCount: 20, status: 1, createTime: '2026-01-15 16:45:00' },
+      { id: 6, roleName: '法务人员', roleCode: 'legal', description: '法务相关操作权限', userCount: 2, status: 1, createTime: '2026-02-01 10:00:00' },
+      { id: 7, roleName: '总经理', roleCode: 'gm', description: '公司最高管理权限', userCount: 1, status: 1, createTime: '2026-01-01 08:00:00' }
     ]
-    pagination.total = 4
+    pagination.total = 7
   }
 }
 
@@ -116,8 +127,21 @@ const dialogTitle = ref('')
 const formRef = ref()
 const form = reactive({ id: null as number | null, roleName: '', roleCode: '', description: '', status: 1 })
 const rules = {
-  roleName: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
-  roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }]
+  roleName: [{ required: true, message: '请选择角色名称', trigger: 'change' }]
+}
+
+const roleCodeMap: Record<string, string> = {
+  '超级管理员': 'admin',
+  '项目经理': 'project_manager',
+  '财务人员': 'finance',
+  '采购人员': 'purchase',
+  '普通员工': 'employee',
+  '法务人员': 'legal',
+  '总经理': 'gm'
+}
+
+const handleRoleChange = (val: string) => {
+  form.roleCode = roleCodeMap[val] || ''
 }
 
 const handleSearch = () => { loadData() }
