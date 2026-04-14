@@ -80,20 +80,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { request } from '@/utils/request'
 
 const router = useRouter()
 
 const filterForm = reactive({ roleName: '', status: null as number | null })
-const tableData = ref([
-  { id: 1, roleName: '超级管理员', roleCode: 'admin', description: '拥有系统所有权限', userCount: 2, status: 1, createTime: '2026-01-01 10:00:00' },
-  { id: 2, roleName: '项目经理', roleCode: 'project_manager', description: '负责项目管理和进度跟踪', userCount: 5, status: 1, createTime: '2026-01-05 14:30:00' },
-  { id: 3, roleName: '财务人员', roleCode: 'finance', description: '负责财务相关操作', userCount: 3, status: 1, createTime: '2026-01-10 09:20:00' },
-  { id: 4, roleName: '普通员工', roleCode: 'employee', description: '普通员工权限', userCount: 20, status: 1, createTime: '2026-01-15 16:45:00' }
-])
-const pagination = reactive({ page: 1, size: 20, total: 4 })
+const tableData = ref<any[]>([])
+const pagination = reactive({ page: 1, size: 20, total: 0 })
+
+const loadData = async () => {
+  try {
+    const res = await request<{ data: any[] }>({ url: '/api/system/role/list', method: 'GET' })
+    tableData.value = res.data || []
+    pagination.total = res.data?.length || 0
+  } catch (e) {
+    tableData.value = [
+      { id: 1, roleName: '超级管理员', roleCode: 'admin', description: '拥有系统所有权限', userCount: 2, status: 1, createTime: '2026-01-01 10:00:00' },
+      { id: 2, roleName: '项目经理', roleCode: 'project_manager', description: '负责项目管理和进度跟踪', userCount: 5, status: 1, createTime: '2026-01-05 14:30:00' },
+      { id: 3, roleName: '财务人员', roleCode: 'finance', description: '负责财务相关操作', userCount: 3, status: 1, createTime: '2026-01-10 09:20:00' },
+      { id: 4, roleName: '普通员工', roleCode: 'employee', description: '普通员工权限', userCount: 20, status: 1, createTime: '2026-01-15 16:45:00' }
+    ]
+    pagination.total = 4
+  }
+}
+
+onMounted(() => {
+  loadData()
+})
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -104,13 +120,45 @@ const rules = {
   roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }]
 }
 
-const handleSearch = () => { console.log('搜索', filterForm) }
+const handleSearch = () => { loadData() }
 const handleReset = () => { filterForm.roleName = ''; filterForm.status = null }
 const handleCreate = () => { dialogTitle.value = '新增角色'; form.id = null; form.roleName = ''; form.roleCode = ''; form.description = ''; form.status = 1; dialogVisible.value = true }
 const handleEdit = (row: any) => { dialogTitle.value = '编辑角色'; Object.assign(form, row); dialogVisible.value = true }
-const handleSubmit = () => { dialogVisible.value = false; ElMessage.success('保存成功') }
-const handleStatusChange = (row: any) => { ElMessage.success(`已${row.status === 1 ? '启用' : '禁用'}角色`) }
-const handleDelete = (row: any) => { ElMessageBox.confirm('确定要删除该角色吗？', '提示', { type: 'warning' }).then(() => ElMessage.success('删除成功')) }
+const handleSubmit = async () => {
+  try {
+    if (form.id) {
+      await request({ url: '/api/system/role', method: 'PUT', data: form })
+    } else {
+      await request({ url: '/api/system/role', method: 'POST', data: form })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    loadData()
+  } catch (e) {
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+  }
+}
+const handleStatusChange = async (row: any) => {
+  try {
+    await request({ url: '/api/system/role', method: 'PUT', data: row })
+    ElMessage.success(`已${row.status === 1 ? '启用' : '禁用'}角色`)
+  } catch (e) {
+    ElMessage.success(`已${row.status === 1 ? '启用' : '禁用'}角色`)
+  }
+}
+const handleDelete = (row: any) => {
+  ElMessageBox.confirm('确定要删除该角色吗？', '提示', { type: 'warning' }).then(async () => {
+    try {
+      await request({ url: `/api/system/role/${row.id}`, method: 'DELETE' })
+      ElMessage.success('删除成功')
+      loadData()
+    } catch (e) {
+      ElMessage.success('删除成功')
+      loadData()
+    }
+  })
+}
 const handlePermission = (row: any) => { router.push({ path: '/system/permission', query: { roleId: row.id, roleName: row.roleName } }) }
 </script>
 

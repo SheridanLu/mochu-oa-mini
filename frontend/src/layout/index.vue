@@ -76,12 +76,14 @@
             <el-icon><DataAnalysis /></el-icon>
             <span>报表中心</span>
           </template>
+          <el-menu-item index="/report">报表概览</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="/approval">
           <template #title>
             <el-icon><Checked /></el-icon>
             <span>审批中心</span>
           </template>
+          <el-menu-item index="/approval">我的审批</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="/system">
           <template #title>
@@ -90,7 +92,9 @@
           </template>
           <el-menu-item index="/system/announcement">公告管理</el-menu-item>
           <el-menu-item index="/system/company">公司信息</el-menu-item>
+          <el-menu-item index="/system/user">用户管理</el-menu-item>
           <el-menu-item index="/system/role">角色管理</el-menu-item>
+          <el-menu-item index="/system/permission">权限配置</el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>

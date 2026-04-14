@@ -18,6 +18,9 @@ public class BizProject extends BaseEntity {
     @TableField("project_name")
     private String projectName;
     
+    @TableField("project_alias")
+    private String projectAlias;
+    
     @TableField("project_type")
     private Integer projectType;
     
@@ -45,6 +48,18 @@ public class BizProject extends BaseEntity {
     @TableField("contract_amount")
     private BigDecimal contractAmount;
     
+    @TableField("amount_without_tax")
+    private BigDecimal amountWithoutTax;
+    
+    @TableField("tax_rate")
+    private BigDecimal taxRate;
+    
+    @TableField("tax_amount")
+    private BigDecimal taxAmount;
+    
+    @TableField("contract_type")
+    private String contractType;
+    
     @TableField("start_date")
     private LocalDate startDate;
     
@@ -68,6 +83,21 @@ public class BizProject extends BaseEntity {
     
     @TableField("department_name")
     private String departmentName;
+    
+    @TableField("budget_limit")
+    private BigDecimal budgetLimit;
+    
+    @TableField("bid_date")
+    private LocalDate bidDate;
+    
+    @TableField("winning_notice")
+    private String winningNotice;
+    
+    @TableField("winning_amount")
+    private BigDecimal winningAmount;
+    
+    @TableField("attachment_paths")
+    private String attachmentPaths;
     
     @TableField("remark")
     private String remark;

@@ -25,16 +25,52 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '项目管理' }
       },
       {
+        path: '/project/create',
+        name: 'ProjectCreate',
+        component: () => import('@/views/project/edit.vue'),
+        meta: { title: '新建项目' }
+      },
+      {
+        path: '/project/edit',
+        name: 'ProjectEdit',
+        component: () => import('@/views/project/edit.vue'),
+        meta: { title: '编辑项目' }
+      },
+      {
         path: '/contract',
         name: 'Contract',
         component: () => import('@/views/contract/index.vue'),
         meta: { title: '合同管理' }
       },
       {
+        path: '/contract/create',
+        name: 'ContractCreate',
+        component: () => import('@/views/contract/edit.vue'),
+        meta: { title: '新建合同' }
+      },
+      {
+        path: '/contract/edit',
+        name: 'ContractEdit',
+        component: () => import('@/views/contract/edit.vue'),
+        meta: { title: '编辑合同' }
+      },
+      {
         path: '/supplier',
         name: 'Supplier',
         component: () => import('@/views/supplier/index.vue'),
         meta: { title: '供应商管理' }
+      },
+      {
+        path: '/supplier/create',
+        name: 'SupplierCreate',
+        component: () => import('@/views/supplier/edit.vue'),
+        meta: { title: '新增供应商' }
+      },
+      {
+        path: '/supplier/edit',
+        name: 'SupplierEdit',
+        component: () => import('@/views/supplier/edit.vue'),
+        meta: { title: '编辑供应商' }
       },
       {
         path: '/price',
@@ -59,6 +95,18 @@ const routes: RouteRecordRaw[] = [
         name: 'Material',
         component: () => import('@/views/material/index.vue'),
         meta: { title: '物资管理' }
+      },
+      {
+        path: '/material/edit',
+        name: 'MaterialEdit',
+        component: () => import('@/views/material/edit.vue'),
+        meta: { title: '编辑物资' }
+      },
+      {
+        path: '/material/create',
+        name: 'MaterialCreate',
+        component: () => import('@/views/material/edit.vue'),
+        meta: { title: '新增物资' }
       },
       {
         path: '/construction',
@@ -177,6 +225,12 @@ const routes: RouteRecordRaw[] = [
             name: 'Role',
             component: () => import('@/views/system/role/index.vue'),
             meta: { title: '角色管理' }
+          },
+          {
+            path: 'user',
+            name: 'User',
+            component: () => import('@/views/system/user/index.vue'),
+            meta: { title: '用户管理' }
           },
           {
             path: 'permission',

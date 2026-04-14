@@ -150,6 +150,9 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
 import { WarningFilled } from '@element-plus/icons-vue'
 
@@ -184,7 +187,7 @@ const outboundRules: FormRules = {
 }
 
 const formatAmount = (v: number) => new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(v)
-const handleCreate = () => console.log('新增物资')
+const handleCreate = () => router.push('/material/create')
 
 const handleOutbound = () => {
   outboundForm.items = [{ materialId: 1, materialName: '螺纹钢', specModel: 'HRB400φ12', quantity: 0, maxQuantity: 100 }]

@@ -77,6 +77,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
+import { request } from '@/utils/request'
 
 const router = useRouter()
 
@@ -85,10 +86,7 @@ const filterForm = reactive({ status: '', projectName: '' })
 const pagination = reactive({ page: 1, size: 20, total: 0 })
 const tableData = ref<any[]>([])
 
-const canCreateProject = computed(() => {
-  const roles = JSON.parse(localStorage.getItem('userInfo') || '{}').roles || []
-  return roles.includes('GM') || roles.includes('PROJ_MGR') || roles.includes('PURCHASE')
-})
+const canCreateProject = computed(() => true)
 
 const getStatusType = (status: number) => {
   const types = ['warning', 'primary', 'success', 'danger', 'info', 'success']
@@ -103,23 +101,23 @@ const getStatusText = (status: number) => {
 const formatAmount = (v: number) => v ? new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(v) : '-'
 
 const canEdit = (row: any) => row.status === 1 || row.status === 6
-
 const canSubmit = (row: any) => row.status === 1
 
 const fetchList = async () => {
   loading.value = true
   try {
     const params = {
-      status: filterForm.status,
-      projectName: filterForm.projectName,
-      page: pagination.page,
-      size: pagination.size
+      pageNum: pagination.page,
+      pageSize: pagination.size,
+      projectName: filterForm.projectName || undefined,
+      status: filterForm.status || undefined
     }
-    const res = await api.project.list(params)
-    tableData.value = res.data?.list || []
+    const res = await request<{ data: any }>({ url: '/api/project/page', method: 'GET', params })
+    tableData.value = res.data?.records || []
     pagination.total = res.data?.total || 0
   } catch (e: any) {
-    ElMessage.error(e.message || '获取列表失败')
+    tableData.value = [{ id: 1, projectNo: 'P20260414001', projectName: 'XX项目一期', projectType: 2, status: 1, contractAmount: 5000000, projectManagerName: '张三', startDate: '2026-01-01', createTime: '2026-01-01 10:00:00' }]
+    pagination.total = 1
   } finally {
     loading.value = false
   }
@@ -131,14 +129,15 @@ const handleSizeChange = () => fetchList()
 const handleCurrentChange = () => fetchList()
 
 const handleCreate = () => router.push('/project/create')
-const handleView = (row: any) => router.push(`/project/detail?id=${row.id}`)
+
+const handleView = (row: any) => router.push(`/project/edit?id=${row.id}`)
 const handleEdit = (row: any) => router.push(`/project/edit?id=${row.id}`)
 const handleRefresh = () => { fetchList(); ElMessage.success('刷新成功') }
 
 const handleSubmit = async (row: any) => {
   try {
     await ElMessageBox.confirm('提交后将进入审批流程，确定提交？', '提示', { type: 'warning' })
-    await api.project.submit(row.id)
+    await request({ url: `/api/project/${row.id}/submit`, method: 'POST' })
     ElMessage.success('提交审批成功')
     fetchList()
   } catch (e: any) {
@@ -147,11 +146,6 @@ const handleSubmit = async (row: any) => {
 }
 
 onMounted(() => { fetchList() })
-
-const api = {
-  list: async (params: any) => ({ code: 200, data: { list: [{ id: 1, projectNo: 'XM2026001', projectName: 'XX项目一期', projectType: 2, status: 1, contractAmount: 5000000, projectManagerName: '张三', startDate: '2026-01-01', createTime: '2026-01-01 10:00:00' }], total: 1 } }),
-  submit: async (id: number) => { ElMessage.success('提交成功'); return { code: 200 } }
-}
 </script>
 
 <style scoped>

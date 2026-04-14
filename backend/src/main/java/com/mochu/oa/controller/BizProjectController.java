@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @RestController
@@ -57,8 +59,17 @@ public class BizProjectController {
     @PostMapping
     @Operation(summary = "创建项目")
     public Result<Void> create(@RequestBody BizProject project) {
+        if (project.getProjectType() == null) {
+            return Result.error("请选择项目类型");
+        }
+        String prefix = project.getProjectType() == 1 ? "V" : "P";
+        String projectNo = generateProjectNo(prefix);
+        project.setProjectNo(projectNo);
+        if (project.getStatus() == null) {
+            project.setStatus(1);
+        }
         bizProjectService.save(project);
-        return Result.success(null);
+        return Result.success();
     }
     
     @PutMapping
@@ -73,5 +84,25 @@ public class BizProjectController {
     public Result<Void> delete(@Parameter(description = "项目ID") @PathVariable Long id) {
         bizProjectService.removeById(id);
         return Result.success(null);
+    }
+    
+    private String generateProjectNo(String prefix) {
+        LocalDate today = LocalDate.now();
+        String dateStr = today.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        LambdaQueryWrapper<BizProject> wrapper = new LambdaQueryWrapper<>();
+        wrapper.likeRight(BizProject::getProjectNo, prefix + dateStr);
+        wrapper.orderByDesc(BizProject::getProjectNo).last("LIMIT 1");
+        BizProject last = bizProjectService.getOne(wrapper);
+        int seq = 1;
+        if (last != null && last.getProjectNo() != null) {
+            String lastNo = last.getProjectNo();
+            String seqStr = lastNo.substring(lastNo.length() - 3);
+            try {
+                seq = Integer.parseInt(seqStr) + 1;
+            } catch (Exception e) {
+                seq = 1;
+            }
+        }
+        return prefix + dateStr + String.format("%03d", seq);
     }
 }

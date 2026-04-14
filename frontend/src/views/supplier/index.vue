@@ -49,9 +49,9 @@
               </template>
             </el-table-column>
             <el-table-column label="操作" width="150">
-              <template #default>
-                <el-button type="primary" link>查看</el-button>
-                <el-button type="primary" link>编辑</el-button>
+              <template #default="{ row }">
+                <el-button type="primary" link @click="handleView(row)">查看</el-button>
+                <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -131,11 +131,16 @@
 </template>
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 const activeTab = ref('list')
 const tableData = ref([
   { id: 1, supplierNo: 'GYS2026001', supplierName: 'XX建材有限公司', supplierType: 1, contactName: '张经理', contactPhone: '13800138000', rating: 5, status: 1 }
 ])
+
 const formatAmount = (amount: number) => new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(amount)
+
 const equipmentRank = ref([
   { supplierName: 'XX设备有限公司', dealCount: 25, dealAmount: 5800000, rating: 5 },
   { supplierName: 'XX机械公司', dealCount: 18, dealAmount: 4200000, rating: 4 },
@@ -151,7 +156,10 @@ const laborRank = ref([
   { supplierName: 'XX建筑劳务', dealCount: 245, dealAmount: 7350000, rating: 4 },
   { supplierName: 'XX人力外包', dealCount: 180, dealAmount: 5400000, rating: 4 }
 ])
-const handleCreate = () => console.log('新增供应商')
+
+const handleCreate = () => router.push('/supplier/create')
+const handleEdit = (row: any) => router.push(`/supplier/edit?id=${row.id}`)
+const handleView = (row: any) => router.push(`/supplier/edit?id=${row.id}&view=true`)
 </script>
 <style scoped>.supplier-container { padding: 20px; }
 .page-header { display: flex; justify-content: space-between; margin-bottom: 20px; }

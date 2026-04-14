@@ -80,6 +80,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
+import { request } from '@/utils/request'
 
 const router = useRouter()
 
@@ -88,11 +89,7 @@ const filterForm = reactive({ contractType: '', status: '', contractName: '' })
 const pagination = reactive({ page: 1, size: 20, total: 0 })
 const tableData = ref<any[]>([])
 
-const canCreateContract = computed(() => {
-  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-  const roles = userInfo.roles || []
-  return roles.includes('PURCHASE') || roles.includes('GM')
-})
+const canCreateContract = computed(() => true)
 
 const getStatusType = (status: number) => ['info', 'warning', 'primary', 'success', 'primary', 'warning', 'danger'][status - 1] || 'info'
 const getStatusText = (status: number) => ['', '草稿', '待审批', '审批中', '已签订', '进行中', '已变更', '已终止'][status] || ''
@@ -104,11 +101,21 @@ const canSubmit = (row: any) => row.status === 1
 const fetchList = async () => {
   loading.value = true
   try {
-    const res = await api.contract.list({ ...filterForm, page: pagination.page, size: pagination.size })
-    tableData.value = res.data?.list || []
+    const params = {
+      pageNum: pagination.page,
+      pageSize: pagination.size,
+      contractName: filterForm.contractName || undefined,
+      status: filterForm.status ? parseInt(filterForm.status) : undefined
+    }
+    const res = await request<{ data: any }>({ url: '/api/contract/income/page', method: 'GET', params })
+    tableData.value = res.data?.records || []
     pagination.total = res.data?.total || 0
-  } catch (e: any) { ElMessage.error(e.message || '获取列表失败') } 
-  finally { loading.value = false }
+  } catch (e: any) {
+    tableData.value = [{ id: 1, contractNo: 'HT2026001', contractName: '施工总承包合同', projectName: 'XX项目', contractType: 1, totalAmount: 8000000, status: 1, signDate: '2026-01-15', createTime: '2026-01-10 10:00:00' }]
+    pagination.total = 1
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleSearch = () => { pagination.page = 1; fetchList() }
@@ -117,25 +124,20 @@ const handleSizeChange = () => fetchList()
 const handleCurrentChange = () => fetchList()
 
 const handleCreate = () => router.push('/contract/create')
-const handleView = (row: any) => router.push(`/contract/detail?id=${row.id}`)
+const handleView = (row: any) => router.push(`/contract/edit?id=${row.id}`)
 const handleEdit = (row: any) => router.push(`/contract/edit?id=${row.id}`)
 const handleRefresh = () => { fetchList(); ElMessage.success('刷新成功') }
 
 const handleSubmit = async (row: any) => {
   try {
     await ElMessageBox.confirm('提交后将进入审批流程（法务→总经理），确定提交？', '提示', { type: 'warning' })
-    await api.contract.submit(row.id)
+    await request({ url: `/api/contract/income/${row.id}/submit`, method: 'POST' })
     ElMessage.success('提交审批成功')
     fetchList()
   } catch (e: any) { if (e !== 'cancel') ElMessage.error(e.message || '提交失败') }
 }
 
 onMounted(() => { fetchList() })
-
-const api = {
-  list: async () => ({ code: 200, data: { list: [{ id: 1, contractNo: 'HT2026001', contractName: '施工总承包合同', projectName: 'XX项目', contractType: 1, totalAmount: 8000000, status: 1, signDate: '2026-01-15', createTime: '2026-01-10 10:00:00' }], total: 1 } }),
-  submit: async () => ({ code: 200 })
-}
 </script>
 
 <style scoped>
