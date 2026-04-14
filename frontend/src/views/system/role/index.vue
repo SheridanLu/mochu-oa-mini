@@ -158,35 +158,34 @@ const handleEdit = (row: any) => {
 const handleSubmit = async () => {
   try {
     if (form.id) {
-      await request({ url: '/api/system/role', method: 'PUT', data: form })
+      await request({ url: '/system/role', method: 'PUT', data: form })
     } else {
-      await request({ url: '/api/system/role', method: 'POST', data: form })
+      await request({ url: '/system/role', method: 'POST', data: form })
     }
     ElMessage.success('保存成功')
     dialogVisible.value = false
     loadData()
-  } catch (e) {
-    ElMessage.success('保存成功')
-    dialogVisible.value = false
+  } catch (e: any) {
+    ElMessage.error(e.message || '保存失败')
   }
+}
 }
 const handleStatusChange = async (row: any) => {
   try {
-    await request({ url: '/api/system/role', method: 'PUT', data: row })
+    await request({ url: '/system/role', method: 'PUT', data: row })
     ElMessage.success(`已${row.status === 1 ? '启用' : '禁用'}角色`)
-  } catch (e) {
-    ElMessage.success(`已${row.status === 1 ? '启用' : '禁用'}角色`)
+  } catch (e: any) {
+    ElMessage.error(e.message || '操作失败')
   }
 }
 const handleDelete = (row: any) => {
   ElMessageBox.confirm('确定要删除该角色吗？', '提示', { type: 'warning' }).then(async () => {
     try {
-      await request({ url: `/api/system/role/${row.id}`, method: 'DELETE' })
+      await request({ url: `/system/role/${row.id}`, method: 'DELETE' })
       ElMessage.success('删除成功')
       loadData()
-    } catch (e) {
-      ElMessage.success('删除成功')
-      loadData()
+    } catch (e: any) {
+      ElMessage.error(e.message || '删除失败')
     }
   })
 }

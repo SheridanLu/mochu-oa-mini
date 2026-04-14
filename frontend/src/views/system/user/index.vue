@@ -97,7 +97,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
       </template>
     </el-dialog>
 
@@ -130,6 +130,7 @@ import { request } from '@/utils/request'
 const filterForm = reactive({ username: '', realName: '', status: null as number | null })
 const tableData = ref<any[]>([])
 const pagination = reactive({ page: 1, size: 20, total: 0 })
+const submitLoading = ref(false)
 
 const loadData = async () => {
   try {
@@ -173,7 +174,7 @@ const selectedRoles = ref<number[]>([])
 
 const loadDeptTree = async () => {
   try {
-    const res = await request<{ data: any[] }>({ url: '/api/system/dept/tree', method: 'GET' })
+    const res = await request<{ data: any[] }>({ url: '/system/dept/tree', method: 'GET' })
     deptTree.value = res.data || []
   } catch (e) {
     deptTree.value = [{ id: 1, deptName: '总公司', children: [] }]
@@ -182,7 +183,7 @@ const loadDeptTree = async () => {
 
 const loadRoleList = async () => {
   try {
-    const res = await request<{ data: any[] }>({ url: '/api/system/role/list', method: 'GET' })
+    const res = await request<{ data: any[] }>({ url: '/system/role/list', method: 'GET' })
     roleList.value = res.data || []
   } catch (e) {
     roleList.value = []

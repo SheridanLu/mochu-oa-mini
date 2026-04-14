@@ -214,7 +214,7 @@ const checkedDeptIds = ref<number[]>([])
 
 const loadMenuTree = async () => {
   try {
-    const res = await request<{ data: any[] }>({ url: '/api/system/menu/tree', method: 'GET' })
+    const res = await request<{ data: any[] }>({ url: '/system/menu/tree', method: 'GET' })
     menuTree.value = res.data || []
     const getAllIds = (nodes: any[]): number[] => {
       return nodes.reduce((acc: number[], node) => {
@@ -252,7 +252,7 @@ const loadMenuTree = async () => {
 
 const loadDeptTree = async () => {
   try {
-    const res = await request<{ data: any[] }>({ url: '/api/system/dept/tree', method: 'GET' })
+    const res = await request<{ data: any[] }>({ url: '/system/dept/tree', method: 'GET' })
     deptTree.value = res.data || []
   } catch (e) {
     deptTree.value = [{ id: 1, deptName: '总公司', children: [
@@ -275,7 +275,7 @@ const loadRolePermission = async () => {
   const roleId = route.query.roleId
   if (!roleId) return
   try {
-    const res = await request<{ data: number[] }>({ url: `/api/system/role/${roleId}/permissions`, method: 'GET' })
+    const res = await request<{ data: number[] }>({ url: `/system/role/${roleId}/permissions`, method: 'GET' })
     if (res.data) {
       checkedMenuIds.value = res.data || []
     }
@@ -299,7 +299,7 @@ const handleSave = async () => {
   const roleId = route.query.roleId
   try {
     await request({ 
-      url: `/api/system/role/${roleId}/permissions`, 
+      url: `/system/role/${roleId}/permissions`, 
       method: 'POST', 
       data: [...checkedKeys, ...halfCheckedKeys]
     })
