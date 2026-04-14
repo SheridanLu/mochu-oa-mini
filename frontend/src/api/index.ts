@@ -212,15 +212,15 @@ supplier: {
   },
   
   announcement: {
-    list: (params: any) => request({ url: '/system/announcement/list', method: 'GET', params }),
-    get: (id: number) => request({ url: `/system/announcement/${id}`, method: 'GET' }),
-    create: (data: any) => request({ url: '/system/announcement', method: 'POST', data }),
-    update: (data: any) => request({ url: '/system/announcement', method: 'PUT', data }),
-    delete: (id: number) => request({ url: `/system/announcement/${id}`, method: 'DELETE' }),
-    submit: (id: number) => request({ url: `/system/announcement/${id}/submit`, method: 'POST' }),
-    publish: (id: number) => request({ url: `/system/announcement/${id}/publish`, method: 'POST' }),
-    offline: (id: number) => request({ url: `/system/announcement/${id}/offline`, method: 'POST' }),
-    carousel: (params: any) => request({ url: '/system/announcement/carousel', method: 'GET', params }),
+    list: (params: any) => request({ url: '/api/system/announcement/list', method: 'GET', params }),
+    get: (id: number) => request({ url: `/api/system/announcement/${id}`, method: 'GET' }),
+    create: (data: any) => request({ url: '/api/system/announcement', method: 'POST', data }),
+    update: (data: any) => request({ url: '/api/system/announcement', method: 'PUT', data }),
+    delete: (id: number) => request({ url: `/api/system/announcement/${id}`, method: 'DELETE' }),
+    submit: (id: number) => request({ url: `/api/system/announcement/${id}/submit`, method: 'POST' }),
+    publish: (id: number) => request({ url: `/api/system/announcement/${id}/publish`, method: 'POST' }),
+    offline: (id: number) => request({ url: `/api/system/announcement/${id}/offline`, method: 'POST' }),
+    carousel: (params: any) => request({ url: '/api/system/announcement/carousel', method: 'GET', params }),
   },
   
   company: {
