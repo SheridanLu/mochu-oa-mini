@@ -145,9 +145,11 @@ const handleDelete = async (row: any) => {
 onMounted(() => { fetchList() })
 
 const api = {
-  list: async () => ({ code: 200, data: { list: [{ id: 1, orderNo: 'CGQD202604001', contractNo: 'HT001', projectName: 'XX项目', status: 1, sourceType: 2, totalBudget: 250000, creatorName: '张三', createTime: '2026-04-13 10:30' }], total: 1 } }),
-  submit: async () => ({ code: 200 }),
-  delete: async () => ({ code: 200 })
+  purchase: {
+    list: async () => ({ code: 200, data: { list: [{ id: 1, orderNo: 'CGQD202604001', contractNo: 'HT001', projectName: 'XX项目', status: 1, sourceType: 2, totalBudget: 250000, creatorName: '张三', createTime: '2026-04-13 10:30' }], total: 1 } }),
+    submit: async () => ({ code: 200 }),
+    delete: async () => ({ code: 200 })
+  }
 }
 </script>
 

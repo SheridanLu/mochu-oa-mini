@@ -132,8 +132,10 @@ const canSubmit = (row: any) => row.status === 1
 const canEditRow = (row: any) => row.status === 1 || row.status === 4
 
 const api = {
-  list: async () => ({ code: 200, data: { list: [{ id: 1, projectName: 'XX项目一期', ganttName: '一期施工进度计划', status: 4, progress: 65, startDate: '2026-01-01', endDate: '2026-12-31', creatorName: '项目经理', createTime: '2026-01-05 10:00', updateTime: '2026-04-13 14:30' }], total: 1 } }),
-  submit: async () => ({ code: 200 })
+  gantt: {
+    list: async () => ({ code: 200, data: { list: [{ id: 1, projectName: 'XX项目一期', ganttName: '一期施工进度计划', status: 4, progress: 65, startDate: '2026-01-01', endDate: '2026-12-31', creatorName: '项目经理', createTime: '2026-01-05 10:00', updateTime: '2026-04-13 14:30' }], total: 1 } }),
+    submit: async () => ({ code: 200 })
+  }
 }
 </script>
 
