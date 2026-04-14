@@ -124,6 +124,7 @@
             :on-success="handleCoverSuccess"
             :on-remove="handleCoverRemove"
             :on-preview="handleImagePreview"
+            :headers="uploadHeaders"
           >
             <el-icon><Plus /></el-icon>
           </el-upload>
@@ -141,6 +142,7 @@
             multiple
             :on-success="handleContentImageSuccess"
             :on-remove="handleContentImageRemove"
+            :headers="uploadHeaders"
           >
             <el-icon><Plus /></el-icon>
           </el-upload>
@@ -231,6 +233,9 @@ const form = reactive({
 })
 const coverImageList = ref<any[]>([])
 const contentImageList = ref<any[]>([])
+const uploadHeaders = computed(() => ({
+  Authorization: `Bearer ${localStorage.getItem('token') || ''}`
+}))
 
 const formRules: FormRules = {
   title: [{ required: true, message: '请输入公告标题', trigger: 'blur' }],
