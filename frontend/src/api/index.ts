@@ -158,19 +158,20 @@ export const api = {
     confirmPrice: (data: any) => request({ url: '/purchase/confirm-price', method: 'POST', data }),
   },
   
-  supplier: {
-    list: () => request({ url: '/supplier/list', method: 'GET' }),
-    page: (params: any) => request({ url: '/supplier/page', method: 'GET', params }),
-    get: (id: number) => request({ url: `/supplier/${id}`, method: 'GET' }),
-    create: (data: any) => request({ url: '/supplier', method: 'POST', data }),
-    update: (data: any) => request({ url: '/supplier', method: 'PUT', data }),
-    delete: (id: number) => request({ url: `/supplier/${id}`, method: 'DELETE' }),
+supplier: {
+    list: () => request({ url: '/api/supplier/list', method: 'GET' }),
+    page: (params: any) => request({ url: '/api/supplier/page', method: 'GET', params }),
+    get: (id: number) => request({ url: `/api/supplier/${id}`, method: 'GET' }),
+    create: (data: any) => request({ url: '/api/supplier', method: 'POST', data }),
+    update: (data: any) => request({ url: '/api/supplier', method: 'PUT', data }),
+    delete: (id: number) => request({ url: `/api/supplier/${id}`, method: 'DELETE' }),
     rating: {
-      list: (params: any) => request({ url: '/supplier/rating/list', method: 'GET', params }),
-      get: (id: number) => request({ url: `/supplier/rating/${id}`, method: 'GET' }),
-      recalc: (id: number) => request({ url: `/supplier/rating/${id}/recalc`, method: 'POST' }),
-      export: (params: any) => request({ url: '/supplier/rating/export', method: 'GET', params }),
-    },
+      list: (params: any) => request({ url: '/api/supplier/rating/list', method: 'GET', params }),
+      get: (id: number) => request({ url: `/api/supplier/rating/${id}`, method: 'GET' }),
+      recalc: (id: number) => request({ url: `/api/supplier/rating/${id}/recalc`, method: 'POST' }),
+      export: (params: any) => request({ url: '/api/supplier/rating/export', method: 'GET', params }),
+    }
+  },
   },
   
   material: {
@@ -223,10 +224,10 @@ export const api = {
   },
   
   company: {
-    search: (params: any) => request({ url: '/company/search', method: 'GET', params }),
-    get: (id: number) => request({ url: `/company/${id}`, method: 'GET' }),
-    create: (data: any) => request({ url: '/company', method: 'POST', data }),
-    update: (data: any) => request({ url: '/company', method: 'PUT', data }),
+    search: (params: any) => request({ url: '/api/company/search', method: 'GET', params }),
+    get: (id: number) => request({ url: `/api/company/${id}`, method: 'GET' }),
+    create: (data: any) => request({ url: '/api/company', method: 'POST', data }),
+    update: (data: any) => request({ url: '/api/company', method: 'PUT', data }),
   },
   
   invoice: {
