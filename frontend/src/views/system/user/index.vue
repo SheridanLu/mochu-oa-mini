@@ -134,7 +134,7 @@ const submitLoading = ref(false)
 
 const loadData = async () => {
   try {
-    const res = await request<{ data: any[] }>({ url: '/system/user/list', method: 'GET' })
+    const res = await request<{ data: any[] }>({ url: '/api/api/system/user/list', method: 'GET' })
     tableData.value = res.data || []
     pagination.total = res.data?.length || 0
   } catch (e) {
@@ -229,7 +229,7 @@ const handleRole = async (row: any) => {
 const handleRoleSubmit = async () => {
   try {
     await request({ 
-      url: `/system/user/${currentUser.value.id}/roles`, 
+      url: `/api/api/system/user/${currentUser.value.id}/roles`, 
       method: 'PUT', 
       data: { roleIds: selectedRoles.value } 
     })
@@ -248,9 +248,9 @@ const handleSubmit = async () => {
   submitLoading.value = true
   try {
     if (form.id) {
-      await request({ url: '/system/user', method: 'PUT', data: form })
+      await request({ url: '/api/api/system/user', method: 'PUT', data: form })
     } else {
-      await request({ url: '/system/user', method: 'POST', data: form })
+      await request({ url: '/api/api/system/user', method: 'POST', data: form })
     }
     ElMessage.success('保存成功')
     dialogVisible.value = false
@@ -264,7 +264,7 @@ const handleSubmit = async () => {
 const handleDelete = (row: any) => {
   ElMessageBox.confirm('确定要删除该用户吗？', '提示', { type: 'warning' }).then(async () => {
     try {
-      await request({ url: `/system/user/${row.id}`, method: 'DELETE' })
+      await request({ url: `/api/api/system/user/${row.id}`, method: 'DELETE' })
       ElMessage.success('删除成功')
     } catch (e) {
       ElMessage.success('删除成功')

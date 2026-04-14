@@ -106,7 +106,7 @@ const userList = ref<any[]>([])
 
 const loadDeptTree = async () => {
   try {
-    const res = await request<{ data: any[] }>({ url: '/system/dept/tree', method: 'GET' })
+    const res = await request<{ data: any[] }>({ url: '/api/system/dept/tree', method: 'GET' })
     treeData.value = res.data || []
   } catch (e) {
     treeData.value = [
@@ -229,9 +229,9 @@ const handleSubmit = async () => {
   submitLoading.value = true
   try {
     if (form.id) {
-      await request({ url: `/system/dept/${form.id}`, method: 'PUT', data: form })
+      await request({ url: `/api/system/dept/${form.id}`, method: 'PUT', data: form })
     } else {
-      await request({ url: '/system/dept', method: 'POST', data: form })
+      await request({ url: '/api/system/dept', method: 'POST', data: form })
     }
     ElMessage.success('保存成功')
     dialogVisible.value = false
@@ -249,7 +249,7 @@ const handleSubmit = async () => {
 const handleDisable = async (data: any) => {
   try {
     await ElMessageBox.confirm('确定要停用该部门吗？停用后部门下员工将无法正常使用系统。', '提示', { type: 'warning' })
-    await request({ url: `/system/dept/${data.id}/status`, method: 'PATCH', data: { status: 0 } })
+    await request({ url: `/api/system/dept/${data.id}/status`, method: 'PATCH', data: { status: 0 } })
     ElMessage.success('部门已停用')
     loadDeptTree()
   } catch (e) {
@@ -260,7 +260,7 @@ const handleDisable = async (data: any) => {
 
 const handleEnable = async (data: any) => {
   try {
-    await request({ url: `/system/dept/${data.id}/status`, method: 'PATCH', data: { status: 1 } })
+    await request({ url: `/api/system/dept/${data.id}/status`, method: 'PATCH', data: { status: 1 } })
     ElMessage.success('部门已启用')
     loadDeptTree()
   } catch (e) {
@@ -272,7 +272,7 @@ const handleEnable = async (data: any) => {
 const handleDelete = (data: any) => {
   ElMessageBox.confirm('确定要删除该部门吗？删除后无法恢复。', '提示', { type: 'warning' }).then(async () => {
     try {
-      await request({ url: `/system/dept/${data.id}`, method: 'DELETE' })
+      await request({ url: `/api/system/dept/${data.id}`, method: 'DELETE' })
       ElMessage.success('删除成功')
       loadDeptTree()
     } catch (e) {
