@@ -275,7 +275,7 @@ const loadRolePermission = async () => {
   const roleId = route.query.roleId
   if (!roleId) return
   try {
-    const res = await request<{ data: number[] }>({ url: `/system/role/${roleId}/permissions`, method: 'GET' })
+    const res = await request<{ data: number[] }>({ url: `/api/system/role/${roleId}/permissions`, method: 'GET' })
     if (res.data) {
       checkedMenuIds.value = res.data || []
     }
@@ -299,7 +299,7 @@ const handleSave = async () => {
   const roleId = route.query.roleId
   try {
     await request({ 
-      url: `/system/role/${roleId}/permissions`, 
+url: `/api/system/role/${roleId}/permissions`,
       method: 'POST', 
       data: [...checkedKeys, ...halfCheckedKeys]
     })
