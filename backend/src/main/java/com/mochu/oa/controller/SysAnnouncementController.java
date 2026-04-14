@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/system/announcement")
+@RequestMapping("/api/system/announcement")
 @RequiredArgsConstructor
 @Tag(name = "公告管理")
 public class SysAnnouncementController {
