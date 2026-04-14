@@ -52,4 +52,11 @@ public class SysUserController {
         sysUserService.removeById(id);
         return Result.success(null);
     }
+    
+    @PutMapping("/{id}/roles")
+    @Operation(summary = "更新用户角色")
+    public Result<Void> updateRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
+        sysUserService.updateUserRoles(id, roleIds);
+        return Result.success(null);
+    }
 }

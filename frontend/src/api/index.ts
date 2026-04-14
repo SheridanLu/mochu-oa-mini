@@ -338,6 +338,8 @@ system: {
       create: (data: any) => request({ url: '/api/system/role', method: 'POST', data }),
       update: (data: any) => request({ url: '/api/system/role', method: 'PUT', data }),
       delete: (id: number) => request({ url: `/api/system/role/${id}`, method: 'DELETE' }),
+      getPermissions: (id: number) => request({ url: `/api/system/role/${id}/permissions`, method: 'GET' }),
+      savePermissions: (id: number, data: any) => request({ url: `/api/system/role/${id}/permissions`, method: 'POST', data }),
     },
     department: {
       list: () => request({ url: '/api/system/department/list', method: 'GET' }),

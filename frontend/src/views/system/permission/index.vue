@@ -275,12 +275,9 @@ const loadRolePermission = async () => {
   const roleId = route.query.roleId
   if (!roleId) return
   try {
-    const res = await request<{ data: any }>({ url: `/api/system/role/${roleId}/permission`, method: 'GET' })
+    const res = await request<{ data: number[] }>({ url: `/api/system/role/${roleId}/permissions`, method: 'GET' })
     if (res.data) {
-      checkedMenuIds.value = res.data.menuIds || []
-      checkedActions.value = res.data.actionCodes || []
-      dataScope.value = res.data.dataScope || 1
-      checkedDeptIds.value = res.data.deptIds || []
+      checkedMenuIds.value = res.data || []
     }
   } catch (e) {}
 }
@@ -302,14 +299,9 @@ const handleSave = async () => {
   const roleId = route.query.roleId
   try {
     await request({ 
-      url: `/api/system/role/${roleId}/permission`, 
-      method: 'PUT', 
-      data: {
-        menuIds: [...checkedKeys, ...halfCheckedKeys],
-        actionCodes: checkedActions.value,
-        dataScope: dataScope.value,
-        deptIds: dataScope.value === 4 ? checkedDeptKeys : []
-      } 
+      url: `/api/system/role/${roleId}/permissions`, 
+      method: 'POST', 
+      data: [...checkedKeys, ...halfCheckedKeys]
     })
     ElMessage.success('权限保存成功')
     router.push('/system/role')
