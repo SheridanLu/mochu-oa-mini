@@ -1,0 +1,24 @@
+# 后端
+target/
+*.class
+*.log
+*.jar
+*.war
+
+# 前端
+node_modules/
+dist/
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# 系统
+.DS_Store
+
+# 临时文件
+*.tmp
+~$*
