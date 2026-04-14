@@ -243,6 +243,12 @@ const routes: RouteRecordRaw[] = [
             name: 'Permission',
             component: () => import('@/views/system/permission/index.vue'),
             meta: { title: '权限配置' }
+          },
+          {
+            path: 'dept',
+            name: 'Dept',
+            component: () => import('@/views/system/dept/index.vue'),
+            meta: { title: '部门管理' }
           }
         ]
       }

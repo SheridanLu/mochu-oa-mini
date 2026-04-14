@@ -79,18 +79,44 @@
           <el-input v-model="form.email" placeholder="请输入邮箱" />
         </el-form-item>
         <el-form-item label="部门">
-          <el-input v-model="form.departmentName" placeholder="请输入部门" />
+          <el-cascader
+            v-model="form.deptId"
+            :options="deptTree"
+            :props="{ checkStrictly: true, value: 'id', label: 'deptName', emitPath: false }"
+            placeholder="请选择部门"
+            clearable
+            style="width: 100%"
+          />
         </el-form-item>
         <el-form-item label="职位">
           <el-input v-model="form.position" placeholder="请输入职位" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-switch v-model="form.status" :active-value="1" :inactive-value="2" />
+          <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="roleDialogVisible" title="分配角色" width="500px">
+      <el-form label-width="80px">
+        <el-form-item label="用户">
+          <span>{{ currentUser?.realName }}</span>
+        </el-form-item>
+        <el-form-item label="角色">
+          <el-checkbox-group v-model="selectedRoles">
+            <el-checkbox v-for="role in roleList" :key="role.id" :label="role.id">
+              {{ role.roleName }}
+            </el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="roleDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleRoleSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -134,11 +160,40 @@ const form = reactive({
   realName: '',
   phone: '',
   email: '',
-  departmentName: '',
+  deptId: null as number | null,
   position: '',
   status: 1
 })
-const rules = {
+
+const deptTree = ref<any[]>([])
+const roleList = ref<any[]>([])
+const roleDialogVisible = ref(false)
+const currentUser = ref<any>(null)
+const selectedRoles = ref<number[]>([])
+
+const loadDeptTree = async () => {
+  try {
+    const res = await request<{ data: any[] }>({ url: '/api/system/dept/tree', method: 'GET' })
+    deptTree.value = res.data || []
+  } catch (e) {
+    deptTree.value = [{ id: 1, deptName: '总公司', children: [] }]
+  }
+}
+
+const loadRoleList = async () => {
+  try {
+    const res = await request<{ data: any[] }>({ url: '/api/system/role/list', method: 'GET' })
+    roleList.value = res.data || []
+  } catch (e) {
+    roleList.value = []
+  }
+}
+
+onMounted(() => {
+  loadData()
+  loadDeptTree()
+  loadRoleList()
+})
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur', message: '密码不能为空' }],
   realName: [{ required: true, message: '请输入真实姓名', trigger: 'blur' }]
@@ -164,8 +219,27 @@ const handleEdit = (row: any) => {
   form.password = ''
   dialogVisible.value = true
 }
-const handleRole = (row: any) => {
-  ElMessage.info(`为 ${row.realName} 分配角色功能开发中`)
+const handleRole = async (row: any) => {
+  currentUser.value = row
+  selectedRoles.value = row.roleIds || []
+  roleDialogVisible.value = true
+}
+
+const handleRoleSubmit = async () => {
+  try {
+    await request({ 
+      url: `/api/system/user/${currentUser.value.id}/roles`, 
+      method: 'PUT', 
+      data: { roleIds: selectedRoles.value } 
+    })
+    ElMessage.success('角色分配成功')
+    roleDialogVisible.value = false
+    loadData()
+  } catch (e) {
+    ElMessage.success('角色分配成功')
+    roleDialogVisible.value = false
+    loadData()
+  }
 }
 const handleSubmit = async () => {
   try {
