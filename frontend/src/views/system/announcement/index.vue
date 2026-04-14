@@ -118,7 +118,7 @@
         <el-form-item label="封面图片" prop="coverImage">
           <el-upload
             v-model:file-list="coverImageList"
-            action="/api/v1/attachment/upload"
+            action="/api/common/upload"
             list-type="picture-card"
             :limit="1"
             :on-success="handleCoverSuccess"
@@ -136,7 +136,7 @@
         <el-form-item label="内容图片">
           <el-upload
             v-model:file-list="contentImageList"
-            action="/api/v1/attachment/upload"
+            action="/api/common/upload"
             list-type="picture-card"
             multiple
             :on-success="handleContentImageSuccess"
