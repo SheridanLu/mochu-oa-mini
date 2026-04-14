@@ -123,7 +123,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { User, Lock, Message, ArrowLeft } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
-import api from '../../api'
+import { api } from '../../api'
 
 const router = useRouter()
 const userStore = useUserStore()
