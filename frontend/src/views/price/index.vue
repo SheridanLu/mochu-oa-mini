@@ -338,8 +338,8 @@ const inquiryList = ref([
   { id: 3, inquiryNo: 'XJ202604003', productName: '挖掘机 卡特', specification: '320D', supplierName: 'XX机械设备', inquiryPrice: 180000, inquiryDate: '2026-04-09', status: 1 }
 ])
 const inquiryPagination = reactive({ page: 1, size: 20, total: 45 })
-const handleInquirySearch = () => console.log('搜索询价', inquiryFilter)
-const handleInquiryReset = () => { inquiryFilter.productName = ''; inquiryFilter.supplierName = ''; inquiryFilter.dateRange = [] }
+const handleInquirySearch = () => { inquiryPagination.page = 1 }
+const handleInquiryReset = () => { inquiryFilter.productName = ''; inquiryFilter.supplierName = ''; inquiryFilter.dateRange = []; inquiryPagination.page = 1 }
 
 const baselineFilter = reactive({ categoryId: '', productName: '' })
 const baselineList = ref([
@@ -348,9 +348,9 @@ const baselineList = ref([
   { id: 3, productCode: 'SB001', productName: '挖掘机 卡特320D', categoryName: '设备类', specification: '320D', unit: '台', baselinePrice: 175000, validDate: '2026-12-31', source: 3 }
 ])
 const baselinePagination = reactive({ page: 1, size: 20, total: 120 })
-const handleBaselineSearch = () => console.log('搜索基准价', baselineFilter)
-const handleBaselineReset = () => { baselineFilter.categoryId = ''; baselineFilter.productName = '' }
-const handleAddBaseline = () => console.log('新增基准价')
+const handleBaselineSearch = () => { baselinePagination.page = 1 }
+const handleBaselineReset = () => { baselineFilter.categoryId = ''; baselineFilter.productName = ''; baselinePagination.page = 1 }
+const handleAddBaseline = () => ElMessage.info('新增基准价功能开发中')
 
 const baseFilter = reactive({ categoryId: '', productName: '' })
 const baseList = ref([
@@ -359,9 +359,9 @@ const baseList = ref([
   { id: 3, productCode: 'SB001', productName: '挖掘机 卡特320D', categoryName: '设备类', specification: '320D', unit: '台', basePrice: 160000, adjustRate: 10, updateTime: '2026-03-15' }
 ])
 const basePagination = reactive({ page: 1, size: 20, total: 200 })
-const handleBaseSearch = () => console.log('搜索基础价', baseFilter)
-const handleBaseReset = () => { baseFilter.categoryId = ''; baseFilter.productName = '' }
-const handleAddBase = () => console.log('新增基础价')
+const handleBaseSearch = () => { basePagination.page = 1 }
+const handleBaseReset = () => { baseFilter.categoryId = ''; baseFilter.productName = ''; basePagination.page = 1 }
+const handleAddBase = () => ElMessage.info('新增基础价功能开发中')
 </script>
 
 <style scoped>

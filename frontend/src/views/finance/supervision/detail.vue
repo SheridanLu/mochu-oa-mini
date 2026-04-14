@@ -158,6 +158,7 @@ import { formatAmount } from '../../../utils/format'
 import api from '../../../api'
 
 const route = useRoute()
+const router = useRouter()
 const id = computed(() => Number(route.query.id) || 0)
 const loading = ref(false)
 const showFeedbackDialog = ref(false)
@@ -194,7 +195,7 @@ const fetchDetail = async () => {
   finally { loading.value = false }
 }
 
-const handleEdit = () => console.log('编辑')
+const handleEdit = () => router.push(`/finance/supervision/edit?id=${id.value}`)
 const handleSubmit = async () => {
   try {
     await api.paymentSupervision.submit(id.value)
@@ -202,7 +203,7 @@ const handleSubmit = async () => {
     fetchDetail()
   } catch (e: any) { ElMessage.error(e.message) }
 }
-const handleAddFeedback = () => console.log('添加反馈')
+const handleAddFeedback = () => ElMessage.info('添加反馈功能开发中')
 
 onMounted(() => { fetchDetail() })
 </script>

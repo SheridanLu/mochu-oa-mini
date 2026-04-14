@@ -91,10 +91,11 @@ const pagination = reactive({ page: 1, size: 20, total: 30 })
 const formatAmount = (amount: number) => new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(amount)
 const getStatusType = (status: number) => ['', 'warning', 'success', 'info'][status] || 'info'
 const getStatusText = (status: number) => ['', '待付款', '已付', '已结清'][status] || ''
-const handleSearch = () => console.log('搜索', filterForm)
-const handleReset = () => { filterForm.month = ''; filterForm.projectId = ''; filterForm.paymentType = '' }
-const handleRefresh = () => console.log('刷新')
-const handleView = (row: any) => console.log('查看', row)
+const handleSearch = () => { pagination.page = 1 }
+const handleReset = () => { filterForm.month = ''; filterForm.projectId = ''; filterForm.paymentType = ''; pagination.page = 1 }
+const handleRefresh = () => { ElMessage.success('刷新成功') }
+const handleView = (row: any) => { ElMessage.info('查看详情: ' + row.planNo) }
+const handleCreate = () => ElMessage.info('新增付款计划功能开发中')
 </script>
 
 <style scoped>

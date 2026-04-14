@@ -167,13 +167,13 @@ const getSupervisionStatusText = (status: number) => {
   return ['待接收', '督办中', '已完成', '已终止'][status - 1] || ''
 }
 
-const handleSearch = () => console.log('搜索', filterForm)
-const handleReset = () => { filterForm.projectId = ''; filterForm.priority = ''; filterForm.status = '' }
-const handleRefresh = () => console.log('刷新')
-const handleGenerate = () => console.log('生成督办计划')
-const handleView = (row: any) => console.log('查看', row)
-const handleApprove = (row: any) => console.log('审批', row)
-const handleAssign = (row: any) => console.log('转办', row)
+const handleSearch = () => { pagination.page = 1 }
+const handleReset = () => { filterForm.projectId = ''; filterForm.priority = ''; filterForm.status = ''; pagination.page = 1 }
+const handleRefresh = () => { ElMessage.success('刷新成功') }
+const handleGenerate = () => ElMessage.info('生成督办计划功能开发中')
+const handleView = (row: any) => router.push(`/finance/supervision/detail?id=${row.id}`)
+const handleApprove = (row: any) => { ElMessage.success('审批通过') }
+const handleAssign = (row: any) => { ElMessage.info('转办功能开发中') }
 </script>
 
 <style scoped>

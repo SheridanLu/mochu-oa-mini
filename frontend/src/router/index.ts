@@ -177,6 +177,12 @@ const routes: RouteRecordRaw[] = [
             meta: { title: '日常报销' }
           },
           {
+            path: 'expense/edit',
+            name: 'FinanceExpenseEdit',
+            component: () => import('@/views/finance/expense/edit.vue'),
+            meta: { title: '报销单编辑' }
+          },
+          {
             path: 'invoice',
             name: 'FinanceInvoice',
             component: () => import('@/views/finance/invoice/index.vue'),

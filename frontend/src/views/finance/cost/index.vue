@@ -76,9 +76,10 @@ const pagination = reactive({ page: 1, size: 20, total: 35 })
 
 const formatAmount = (amount: number) => new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(amount)
 const getSourceTypeText = (type: number) => ['', '报销', '采购', '付款', '工资', '其他'][type] || ''
-const handleSearch = () => console.log('搜索', filterForm)
-const handleReset = () => { filterForm.projectId = ''; filterForm.costCategory = ''; filterForm.period = [] }
-const handleExport = () => console.log('导出')
+const handleSearch = () => { pagination.page = 1 }
+const handleReset = () => { filterForm.projectId = ''; filterForm.costCategory = ''; filterForm.period = []; pagination.page = 1 }
+const handleExport = () => { ElMessage.info('导出功能开发中') }
+const handleCreate = () => ElMessage.info('新增成本功能开发中')
 </script>
 
 <style scoped>

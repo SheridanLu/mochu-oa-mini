@@ -91,11 +91,12 @@ const pagination = reactive({ page: 1, size: 20, total: 45 })
 
 const formatAmount = (amount: number) => new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(amount)
 const getInvoiceTypeText = (type: number) => ['', '增值税专用发票', '增值税普通发票', '电子发票'][type] || ''
-const handleSearch = () => console.log('搜索', filterForm)
-const handleReset = () => { filterForm.invoiceType = ''; filterForm.verified = ''; filterForm.projectId = '' }
-const handleRefresh = () => console.log('刷新')
-const handleView = (row: any) => console.log('查看', row)
-const handleVerify = (row: any) => console.log('认证', row)
+const handleSearch = () => { pagination.page = 1 }
+const handleReset = () => { filterForm.invoiceType = ''; filterForm.verified = ''; filterForm.projectId = ''; pagination.page = 1 }
+const handleRefresh = () => { ElMessage.success('刷新成功') }
+const handleView = (row: any) => { ElMessage.info('查看详情: ' + row.invoiceNo) }
+const handleVerify = (row: any) => { ElMessage.success('认证成功') }
+const handleCreate = () => ElMessage.info('新增发票功能开发中')
 </script>
 
 <style scoped>

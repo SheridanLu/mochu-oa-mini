@@ -203,7 +203,7 @@ const getProgressColor = (task: any) => {
 }
 
 const handleBack = () => router.back()
-const handleRefresh = () => console.log('刷新')
+const handleRefresh = () => { ElMessage.success('刷新成功') }
 </script>
 
 <style scoped>

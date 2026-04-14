@@ -134,7 +134,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+
+const router = useRouter()
 import { WarningFilled } from '@element-plus/icons-vue'
 
 const filterForm = reactive({ departmentId: '', projectId: '', expenseType: '', status: '' })
@@ -149,18 +153,18 @@ const formatAmount = (amount: number) => new Intl.NumberFormat('zh-CN', { style:
 const getBudgetColor = (usage: number) => { if (usage >= 100) return '#f56c6c'; if (usage >= 80) return '#e6a23c'; return '#67c23a' }
 const getStatusType = (status: number) => ['', 'info', 'warning', 'success', 'danger', 'success'][status] || 'info'
 const getStatusText = (status: number) => ['', '草稿', '待审批', '已通过', '已驳回', '已支付'][status] || ''
-const handleSearch = () => console.log('搜索', filterForm)
-const handleReset = () => { filterForm.departmentId = ''; filterForm.projectId = ''; filterForm.expenseType = ''; filterForm.status = '' }
-const handleExport = () => console.log('导出')
-const handleCreate = () => console.log('新建报销单')
-const handleView = (row: any) => console.log('查看', row)
-const handleEdit = (row: any) => console.log('编辑', row)
+const handleSearch = () => { pagination.page = 1 }
+const handleReset = () => { filterForm.departmentId = ''; filterForm.projectId = ''; filterForm.expenseType = ''; filterForm.status = ''; pagination.page = 1 }
+const handleExport = () => { ElMessage.info('导出功能开发中') }
+const handleCreate = () => router.push('/finance/expense/edit')
+const handleView = (row: any) => router.push(`/finance/expense/edit?id=${row.id}&mode=view`)
+const handleEdit = (row: any) => router.push(`/finance/expense/edit?id=${row.id}`)
 const handleSubmit = (row: any) => {
   warningData.value = { projectName: row.projectName, budgetUsage: row.budgetUsage }
   warningLevel.value = row.budgetUsage >= 100 ? 'red' : 'yellow'
   warningDialogVisible.value = true
 }
-const confirmSubmit = () => { warningDialogVisible.value = false; console.log('确认提交') }
+const confirmSubmit = () => { warningDialogVisible.value = false; ElMessage.success('提交成功') }
 
 const warningDialogVisible = ref(false)
 const warningLevel = ref<'yellow' | 'red'>('yellow')

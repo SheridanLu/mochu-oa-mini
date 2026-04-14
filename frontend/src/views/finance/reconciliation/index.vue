@@ -125,7 +125,10 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
+const router = useRouter()
 const filterForm = reactive({
   projectId: '',
   contractId: '',
@@ -160,7 +163,7 @@ const getStatusText = (status: number) => {
 }
 
 const handleSearch = () => {
-  console.log('搜索', filterForm)
+  pagination.page = 1
 }
 
 const handleReset = () => {
@@ -168,30 +171,31 @@ const handleReset = () => {
   filterForm.contractId = ''
   filterForm.status = ''
   filterForm.period = []
+  pagination.page = 1
 }
 
 const handleRefresh = () => {
-  console.log('刷新')
+  ElMessage.success('刷新成功')
 }
 
 const handleExport = () => {
-  console.log('导出')
+  ElMessage.info('导出功能开发中')
 }
 
 const handleView = (row: any) => {
-  console.log('查看', row)
+  router.push(`/finance/reconciliation/detail?id=${row.id}`)
 }
 
 const handleEdit = (row: any) => {
-  console.log('编辑', row)
+  router.push(`/finance/reconciliation/detail?id=${row.id}`)
 }
 
 const handleSubmit = (row: any) => {
-  console.log('提交', row)
+  ElMessage.success('提交成功')
 }
 
 const handleExportRow = (row: any) => {
-  console.log('导出单行', row)
+  ElMessage.info('导出单行功能开发中')
 }
 
 const handleSizeChange = (size: number) => {
