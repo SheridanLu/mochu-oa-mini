@@ -61,7 +61,7 @@
           <el-input v-model="form.deptName" placeholder="请输入部门名称" />
         </el-form-item>
         <el-form-item label="部门编码">
-          <el-input v-model="form.deptCode" placeholder="请输入部门编码" />
+          <el-input v-model="form.deptNo" placeholder="请输入部门编码" />
         </el-form-item>
         <el-form-item label="部门负责人">
           <el-select v-model="form.leaderId" placeholder="请选择部门负责人" clearable style="width: 100%">
@@ -72,7 +72,7 @@
           <el-input v-model="form.phone" placeholder="请输入联系电话" />
         </el-form-item>
         <el-form-item label="排序">
-          <el-input-number v-model="form.sort" :min="0" :max="999" />
+          <el-input-number v-model="form.sortOrder" :min="0" :max="999" />
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="form.status">
@@ -159,10 +159,10 @@ const form = reactive({
   id: null as number | null,
   parentId: null as number | null,
   deptName: '',
-  deptCode: '',
+  deptNo: '',
   leaderId: null as number | null,
   phone: '',
-  sort: 0,
+  sortOrder: 0,
   status: 1,
   remark: ''
 })
@@ -186,10 +186,10 @@ const handleAdd = () => {
   form.id = null
   form.parentId = null
   form.deptName = ''
-  form.deptCode = ''
+  form.deptNo = ''
   form.leaderId = null
   form.phone = ''
-  form.sort = 0
+  form.sortOrder = 0
   form.status = 1
   form.remark = ''
   dialogVisible.value = true
@@ -200,10 +200,10 @@ const handleAddChild = (data: any) => {
   form.id = null
   form.parentId = data.id
   form.deptName = ''
-  form.deptCode = ''
+  form.deptNo = ''
   form.leaderId = null
   form.phone = ''
-  form.sort = 0
+  form.sortOrder = 0
   form.status = 1
   form.remark = ''
   dialogVisible.value = true
@@ -214,10 +214,10 @@ const handleEdit = (data: any) => {
   form.id = data.id
   form.parentId = data.parentId
   form.deptName = data.deptName
-  form.deptCode = data.deptCode || ''
+  form.deptNo = data.deptCode || ''
   form.leaderId = data.leaderId || null
   form.phone = data.phone || ''
-  form.sort = data.sort || 0
+  form.sortOrder = data.sort || 0
   form.status = data.status
   form.remark = data.remark || ''
   dialogVisible.value = true
