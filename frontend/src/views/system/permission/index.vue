@@ -312,8 +312,9 @@ const handleSave = async () => {
       } 
     })
     ElMessage.success('权限保存成功')
-  } catch (e) {
-    ElMessage.success('权限保存成功')
+    router.push('/system/role')
+  } catch (e: any) {
+    ElMessage.error(e.message || '保存失败')
   }
 }
 
