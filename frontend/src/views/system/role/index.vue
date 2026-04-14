@@ -59,21 +59,21 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="角色名称" prop="roleName">
-          <el-select v-model="form.roleName" placeholder="请选择角色" style="width: 100%" @change="handleRoleChange">
-            <el-option label="超级管理员" value="超级管理员" />
-            <el-option label="项目经理" value="项目经理" />
-            <el-option label="财务人员" value="财务人员" />
-            <el-option label="采购人员" value="采购人员" />
-            <el-option label="普通员工" value="普通员工" />
-            <el-option label="法务人员" value="法务人员" />
-            <el-option label="总经理" value="总经理" />
-          </el-select>
+          <el-input v-model="form.roleName" placeholder="请输入角色名称" />
         </el-form-item>
         <el-form-item label="角色编码" prop="roleCode">
-          <el-input v-model="form.roleCode" placeholder="请输入角色编码" disabled />
+          <el-input v-model="form.roleCode" placeholder="请输入角色编码，如：admin" />
         </el-form-item>
         <el-form-item label="角色描述">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入角色描述" />
+        </el-form-item>
+        <el-form-item label="数据范围">
+          <el-select v-model="form.dataScope" placeholder="请选择数据范围" style="width: 100%">
+            <el-option label="全部数据" :value="1" />
+            <el-option label="本部门数据" :value="2" />
+            <el-option label="本人数据" :value="3" />
+            <el-option label="指定范围数据" :value="4" />
+          </el-select>
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
@@ -125,29 +125,36 @@ onMounted(() => {
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const formRef = ref()
-const form = reactive({ id: null as number | null, roleName: '', roleCode: '', description: '', status: 1 })
+const form = reactive({ id: null as number | null, roleName: '', roleCode: '', description: '', dataScope: 3, status: 1 })
 const rules = {
-  roleName: [{ required: true, message: '请选择角色名称', trigger: 'change' }]
+  roleName: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
+  roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }]
 }
 
-const roleCodeMap: Record<string, string> = {
-  '超级管理员': 'admin',
-  '项目经理': 'project_manager',
-  '财务人员': 'finance',
-  '采购人员': 'purchase',
-  '普通员工': 'employee',
-  '法务人员': 'legal',
-  '总经理': 'gm'
-}
-
-const handleRoleChange = (val: string) => {
-  form.roleCode = roleCodeMap[val] || ''
-}
+const roleCodeMap: Record<string, string> = {}
 
 const handleSearch = () => { loadData() }
 const handleReset = () => { filterForm.roleName = ''; filterForm.status = null }
-const handleCreate = () => { dialogTitle.value = '新增角色'; form.id = null; form.roleName = ''; form.roleCode = ''; form.description = ''; form.status = 1; dialogVisible.value = true }
-const handleEdit = (row: any) => { dialogTitle.value = '编辑角色'; Object.assign(form, row); dialogVisible.value = true }
+const handleCreate = () => {
+  dialogTitle.value = '新增角色'
+  form.id = null
+  form.roleName = ''
+  form.roleCode = ''
+  form.description = ''
+  form.dataScope = 3
+  form.status = 1
+  dialogVisible.value = true
+}
+const handleEdit = (row: any) => {
+  dialogTitle.value = '编辑角色'
+  form.id = row.id
+  form.roleName = row.roleName || ''
+  form.roleCode = row.roleCode || ''
+  form.description = row.description || ''
+  form.dataScope = row.dataScope || 3
+  form.status = row.status
+  dialogVisible.value = true
+}
 const handleSubmit = async () => {
   try {
     if (form.id) {
