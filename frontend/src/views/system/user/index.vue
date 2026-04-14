@@ -242,6 +242,9 @@ const handleRoleSubmit = async () => {
   }
 }
 const handleSubmit = async () => {
+  if (!formRef.value) return
+  await formRef.value.validate()
+  submitLoading.value = true
   try {
     if (form.id) {
       await request({ url: '/api/system/user', method: 'PUT', data: form })
@@ -249,11 +252,13 @@ const handleSubmit = async () => {
       await request({ url: '/api/system/user', method: 'POST', data: form })
     }
     ElMessage.success('保存成功')
-  } catch (e) {
-    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    loadData()
+  } catch (e: any) {
+    ElMessage.error(e.message || '保存失败')
+  } finally {
+    submitLoading.value = false
   }
-  dialogVisible.value = false
-  loadData()
 }
 const handleDelete = (row: any) => {
   ElMessageBox.confirm('确定要删除该用户吗？', '提示', { type: 'warning' }).then(async () => {

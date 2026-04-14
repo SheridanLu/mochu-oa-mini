@@ -323,21 +323,29 @@ supplier: {
     associateInvoice: (id: number, data: any) => request({ url: `/payment-apply/${id}/associate-invoice`, method: 'POST', data }),
   },
   
-  system: {
+system: {
     user: {
-      list: () => request({ url: '/system/user/list', method: 'GET' }),
-      get: (id: number) => request({ url: `/system/user/${id}`, method: 'GET' }),
-      create: (data: any) => request({ url: '/system/user', method: 'POST', data }),
-      update: (data: any) => request({ url: '/system/user', method: 'PUT', data }),
-      delete: (id: number) => request({ url: `/system/user/${id}`, method: 'DELETE' }),
+      list: (params?: any) => request({ url: '/api/system/user/list', method: 'GET', params }),
+      get: (id: number) => request({ url: `/api/system/user/${id}`, method: 'GET' }),
+      create: (data: any) => request({ url: '/api/system/user', method: 'POST', data }),
+      update: (data: any) => request({ url: '/api/system/user', method: 'PUT', data }),
+      delete: (id: number) => request({ url: `/api/system/user/${id}`, method: 'DELETE' }),
+      updateRoles: (id: number, data: any) => request({ url: `/api/system/user/${id}/roles`, method: 'PUT', data }),
+    },
+    role: {
+      list: () => request({ url: '/api/system/role/list', method: 'GET' }),
+      get: (id: number) => request({ url: `/api/system/role/${id}`, method: 'GET' }),
+      create: (data: any) => request({ url: '/api/system/role', method: 'POST', data }),
+      update: (data: any) => request({ url: '/api/system/role', method: 'PUT', data }),
+      delete: (id: number) => request({ url: `/api/system/role/${id}`, method: 'DELETE' }),
     },
     department: {
-      list: () => request({ url: '/system/department/list', method: 'GET' }),
-      tree: () => request({ url: '/system/department/tree', method: 'GET' }),
-      get: (id: number) => request({ url: `/system/department/${id}`, method: 'GET' }),
-      create: (data: any) => request({ url: '/system/department', method: 'POST', data }),
-      update: (data: any) => request({ url: '/system/department', method: 'PUT', data }),
-      delete: (id: number) => request({ url: `/system/department/${id}`, method: 'DELETE' }),
+      list: () => request({ url: '/api/system/department/list', method: 'GET' }),
+      tree: () => request({ url: '/api/system/department/tree', method: 'GET' }),
+      get: (id: number) => request({ url: `/api/system/department/${id}`, method: 'GET' }),
+      create: (data: any) => request({ url: '/api/system/department', method: 'POST', data }),
+      update: (data: any) => request({ url: '/api/system/department', method: 'PUT', data }),
+      delete: (id: number) => request({ url: `/api/system/department/${id}`, method: 'DELETE' }),
     },
   },
 }
