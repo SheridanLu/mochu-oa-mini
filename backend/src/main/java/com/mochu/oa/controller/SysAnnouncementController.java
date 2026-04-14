@@ -50,7 +50,7 @@ public class SysAnnouncementController {
     @Operation(summary = "创建公告")
     public Result<Void> create(@RequestBody SysAnnouncement announcement) {
         announcement.setStatus("draft");
-        announcement.setCreateTime(LocalDateTime.now());
+        announcement.setCreatedAt(LocalDateTime.now());
         announcement.setCreatorName("管理员");
         announcementService.save(announcement);
         return Result.success(null);
@@ -59,7 +59,7 @@ public class SysAnnouncementController {
     @PutMapping
     @Operation(summary = "更新公告")
     public Result<Void> update(@RequestBody SysAnnouncement announcement) {
-        announcement.setUpdateTime(LocalDateTime.now());
+        announcement.setUpdatedAt(LocalDateTime.now());
         announcementService.updateById(announcement);
         return Result.success(null);
     }

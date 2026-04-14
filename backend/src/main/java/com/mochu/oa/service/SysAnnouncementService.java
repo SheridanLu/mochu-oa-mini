@@ -25,12 +25,12 @@ public class SysAnnouncementService extends ServiceImpl<SysAnnouncementMapper, S
             wrapper.eq(SysAnnouncement::getStatus, status);
         }
         if (StringUtils.hasText(startTime)) {
-            wrapper.ge(SysAnnouncement::getCreateTime, LocalDateTime.parse(startTime + " 00:00:00"));
+            wrapper.ge(SysAnnouncement::getCreatedAt, LocalDateTime.parse(startTime + " 00:00:00"));
         }
         if (StringUtils.hasText(endTime)) {
-            wrapper.le(SysAnnouncement::getCreateTime, LocalDateTime.parse(endTime + " 23:59:59"));
+            wrapper.le(SysAnnouncement::getCreatedAt, LocalDateTime.parse(endTime + " 23:59:59"));
         }
-        wrapper.orderByDesc(SysAnnouncement::getIsTop).orderByDesc(SysAnnouncement::getCreateTime);
+        wrapper.orderByDesc(SysAnnouncement::getIsTop).orderByDesc(SysAnnouncement::getCreatedAt);
         return page(new Page<>(page, size), wrapper);
     }
     
