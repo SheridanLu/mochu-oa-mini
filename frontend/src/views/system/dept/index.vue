@@ -86,7 +86,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -101,7 +101,7 @@ import { request } from '@/utils/request'
 const treeRef = ref()
 const treeData = ref<any[]>([])
 const treeProps = { label: 'deptName', children: 'children' }
-
+const submitLoading = ref(false)
 const userList = ref<any[]>([])
 
 const loadDeptTree = async () => {
@@ -224,8 +224,10 @@ const handleEdit = (data: any) => {
 }
 
 const handleSubmit = async () => {
+  if (!formRef.value) return
+  await formRef.value.validate()
+  submitLoading.value = true
   try {
-    await formRef.value.validate()
     if (form.id) {
       await request({ url: `/api/system/dept/${form.id}`, method: 'PUT', data: form })
     } else {
@@ -234,9 +236,12 @@ const handleSubmit = async () => {
     ElMessage.success('保存成功')
     dialogVisible.value = false
     loadDeptTree()
-  } catch (e) {
-    ElMessage.success('保存成功')
-    dialogVisible.value = false
+  } catch (e: any) {
+    ElMessage.error(e.message || '保存失败')
+  } finally {
+    submitLoading.value = false
+  }
+}
     loadDeptTree()
   }
 }
