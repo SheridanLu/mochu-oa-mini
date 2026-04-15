@@ -24,7 +24,7 @@
         <el-form-item label="状态">
           <el-select v-model="filterForm.status" placeholder="请选择" clearable style="width: 120px">
             <el-option label="正常" :value="1" />
-            <el-option label="禁用" :value="2" />
+            <el-option label="禁用" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -44,7 +44,7 @@
         <el-table-column prop="position" label="职位" width="100" />
         <el-table-column prop="status" label="状态" width="80" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '正常' : '禁用' }}</el-tag>
+            <el-tag :type="Number(row.status) === 1 ? 'success' : 'danger'">{{ Number(row.status) === 1 ? '正常' : '禁用' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="lastLoginTime" label="最后登录" width="160" />
@@ -100,7 +100,7 @@
           <el-input v-model="form.position" placeholder="请输入职位" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-switch v-model="form.status" :active-value="1" :inactive-value="2" />
+          <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -263,6 +263,15 @@ const handleEdit = (row: any) => {
 const handleRole = async (row: any) => {
   currentUser.value = row
   selectedRoles.value = row.roleIds || []
+  try {
+    const res: any = await request({ url: `/system/user/${row.id}`, method: 'GET' })
+    const roleIds = res?.data?.roleIds
+    if (Array.isArray(roleIds)) {
+      selectedRoles.value = roleIds.map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id))
+    }
+  } catch {
+    // 详情接口未返回角色时沿用列表数据
+  }
   roleDialogVisible.value = true
 }
 

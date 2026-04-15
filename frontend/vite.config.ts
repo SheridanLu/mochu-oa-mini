@@ -41,7 +41,15 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:9090',
-        changeOrigin: true
+        changeOrigin: true,
+        configure(proxy) {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            const auth = req.headers['authorization']
+            if (auth) {
+              proxyReq.setHeader('Authorization', auth)
+            }
+          })
+        }
       }
     }
   }

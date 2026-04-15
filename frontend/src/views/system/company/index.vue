@@ -241,8 +241,14 @@ const handleSubmit = async () => {
   }
 }
 
-const handleSizeChange = (size: number) => { pagination.size = size; fetchList() }
-const handleCurrentChange = (page: number) => { pagination.page = page; fetchList() }
+const handleSizeChange = () => {
+  pagination.page = 1
+  fetchList()
+}
+const handleCurrentChange = (page: number) => {
+  pagination.page = page
+  fetchList()
+}
 
 onMounted(() => { fetchList() })
 </script>

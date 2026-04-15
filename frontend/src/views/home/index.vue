@@ -337,7 +337,7 @@ const handleTodoClick = (item: any) => {
 }
 
 const handleNoticeClick = (item: any) => {
-  router.push(`/system/announcement/detail?id=${item.id}`)
+  router.push({ path: '/system/announcement', query: { id: String(item.id) } })
 }
 
 const handleImageError = (e: Event) => {

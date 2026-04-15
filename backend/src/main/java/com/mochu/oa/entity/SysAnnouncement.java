@@ -1,12 +1,14 @@
 package com.mochu.oa.entity;
 
-import com.mochu.oa.entity.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
 import java.time.LocalDateTime;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@TableName("sys_announcement")
 public class SysAnnouncement extends BaseEntity {
     private String title;
     private String content;

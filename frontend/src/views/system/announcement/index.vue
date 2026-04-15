@@ -215,8 +215,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
 import { formatDateTime } from '../../../utils/format'
 import { parseJsonStringArray, resolveMediaUrl } from '@/utils/media'
 import { api } from '@/api'
@@ -241,6 +242,8 @@ const deleteLoading = ref(false)
 const formRef = ref<FormInstance>()
 const currentRow = ref<any>(null)
 const deleteId = ref(0)
+const route = useRoute()
+const router = useRouter()
 
 const form = reactive({
   id: 0,
@@ -374,6 +377,19 @@ const handleEdit = async (row: any) => {
 const handleView = (row: any) => {
   currentRow.value = row
   viewDialogVisible.value = true
+}
+
+const openDetailById = async (id: number) => {
+  if (!Number.isFinite(id) || id <= 0) return
+  try {
+    const res: any = await api.announcement.get(id)
+    if (res.code === 200 && res.data) {
+      currentRow.value = res.data
+      viewDialogVisible.value = true
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '获取详情失败')
+  }
 }
 
 const handleSaveDraft = async () => {
@@ -525,8 +541,23 @@ const handleImagePreview = (file: any) => {
   imagePreviewVisible.value = true
 }
 
-const handleSizeChange = (size: number) => { pagination.size = size; fetchList() }
+const handleSizeChange = (size: number) => { pagination.size = size; pagination.page = 1; fetchList() }
 const handleCurrentChange = (page: number) => { pagination.page = page; fetchList() }
+
+watch(
+  () => route.query.id,
+  async (id) => {
+    const idStr = Array.isArray(id) ? id[0] : id
+    if (!idStr) return
+    await openDetailById(Number(idStr))
+    // 打开一次详情后清理 query，避免刷新/返回重复触发
+    if (route.query.id) {
+      const { id: _id, ...rest } = route.query
+      router.replace({ path: route.path, query: rest })
+    }
+  },
+  { immediate: true }
+)
 
 onMounted(() => { fetchList() })
 </script>

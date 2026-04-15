@@ -96,7 +96,6 @@
           <el-menu-item index="/system/company">公司信息</el-menu-item>
           <el-menu-item index="/system/user">用户管理</el-menu-item>
           <el-menu-item index="/system/role">角色管理</el-menu-item>
-          <el-menu-item index="/system/permission">权限配置</el-menu-item>
           <el-menu-item index="/system/dept">部门管理</el-menu-item>
         </el-sub-menu>
       </el-menu>
@@ -190,6 +189,10 @@ const handleCommand = (command: string) => {
     userStore.logout()
     menuStore.clearMenus()
     router.push('/login')
+  } else if (command === 'settings') {
+    router.push('/system/announcement')
+  } else if (command === 'profile') {
+    router.push('/home')
   }
 }
 
@@ -206,6 +209,29 @@ const loadMenus = async () => {
   }
 }
 
+const ensureUserInfo = async () => {
+  if (!userStore.token) return
+  try {
+    const res: any = await api.auth.getUserInfo()
+    if (res.code === 200 && res.data) {
+      userStore.setUserInfo({
+        id: Number(res.data.userId) || 0,
+        username: res.data.username || '',
+        realName: res.data.realName || '',
+        avatar: res.data.avatar || '',
+        department: res.data.departmentName || '',
+        roles: []
+      })
+      return
+    }
+  } catch {
+    // token 无效时统一走登出回登录
+  }
+  userStore.logout()
+  menuStore.clearMenus()
+  router.replace('/login')
+}
+
 watch(
   () => route.fullPath,
   () => {
@@ -216,8 +242,10 @@ watch(
 )
 
 onMounted(() => {
-  loadMenus()
-  void refreshTodoBadge()
+  void ensureUserInfo().then(() => {
+    loadMenus()
+    void refreshTodoBadge()
+  })
   todoPollTimer = setInterval(() => void refreshTodoBadge(), 120000)
 })
 

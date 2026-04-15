@@ -302,7 +302,9 @@ router.beforeEach((to, from, next) => {
   if (to.path !== '/login' && !token) {
     next('/login')
   } else if (to.path === '/login' && token) {
-    next('/home')
+    const userInfo = localStorage.getItem('userInfo')
+    // 仅在存在有效用户信息缓存时才跳过登录页，避免无效 token 直接进首页
+    next(userInfo ? '/home' : '/login')
   } else if (!to.path || to.path === '/') {
     next('/home')
   } else {

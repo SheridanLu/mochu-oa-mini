@@ -27,7 +27,8 @@ public class SysMenuController {
     @GetMapping("/tree")
     @Operation(summary = "获取菜单树")
     public Result<List<SysPermission>> getMenuTree() {
-        return Result.success(sysPermissionService.list());
+        List<SysPermission> menus = sysPermissionService.list();
+        return Result.success(sysPermissionService.buildMenuTree(menus));
     }
     
     @GetMapping("/user/{userId}")

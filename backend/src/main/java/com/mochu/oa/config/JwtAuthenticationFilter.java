@@ -27,22 +27,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         
         String token = getTokenFromRequest(request);
-        
+
         if (StringUtils.hasText(token) && !jwtUtils.isTokenExpired(token)) {
-            Long userId = jwtUtils.getUserId(token);
-            String username = jwtUtils.getUsername(token);
-            
-            if (userId != null) {
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                
-                request.setAttribute("userId", userId);
-                request.setAttribute("username", username);
+            try {
+                Long userId = jwtUtils.getUserId(token);
+                String username = jwtUtils.getUsername(token);
+
+                if (userId != null) {
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                    request.setAttribute("userId", userId);
+                    request.setAttribute("username", username);
+                }
+            } catch (Exception ignored) {
+                /* 解析失败则视为未登录，由后续鉴权返回 403 */
             }
         }
-        
+
         filterChain.doFilter(request, response);
     }
     

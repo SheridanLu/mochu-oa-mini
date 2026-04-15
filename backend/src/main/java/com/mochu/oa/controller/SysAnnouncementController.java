@@ -38,6 +38,19 @@ public class SysAnnouncementController {
             "current", pageResult.getCurrent()
         ));
     }
+
+    @GetMapping("/carousel")
+    @Operation(summary = "获取轮播公告")
+    public Result<List<SysAnnouncement>> carousel() {
+        List<SysAnnouncement> list = announcementService.lambdaQuery()
+            .eq(SysAnnouncement::getStatus, "published")
+            .isNotNull(SysAnnouncement::getCoverImage)
+            .orderByDesc(SysAnnouncement::getIsTop)
+            .orderByDesc(SysAnnouncement::getPublishTime)
+            .last("LIMIT 5")
+            .list();
+        return Result.success(list);
+    }
     
     @GetMapping("/{id}")
     @Operation(summary = "获取公告详情")
@@ -90,18 +103,5 @@ public class SysAnnouncementController {
     public Result<Void> offline(@PathVariable Long id) {
         announcementService.offline(id);
         return Result.success(null);
-    }
-    
-    @GetMapping("/carousel")
-    @Operation(summary = "获取轮播公告")
-    public Result<List<SysAnnouncement>> carousel() {
-        List<SysAnnouncement> list = announcementService.lambdaQuery()
-            .eq(SysAnnouncement::getStatus, "published")
-            .isNotNull(SysAnnouncement::getCoverImage)
-            .orderByDesc(SysAnnouncement::getIsTop)
-            .orderByDesc(SysAnnouncement::getPublishTime)
-            .last("LIMIT 5")
-            .list();
-        return Result.success(list);
     }
 }
