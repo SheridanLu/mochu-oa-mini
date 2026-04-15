@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { AxiosRequestConfig } from 'axios'
+import { ElMessage } from 'element-plus'
 
 const service = axios.create({
   baseURL: '/api',
@@ -8,7 +9,11 @@ const service = axios.create({
 
 service.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
+    const rawToken = localStorage.getItem('token')
+    const token = (rawToken || '')
+      .trim()
+      .replace(/^"+|"+$/g, '')
+      .replace(/^Bearer\s+/i, '')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -21,8 +26,11 @@ service.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
+      ElMessage.error('登录已过期，请重新登录')
       localStorage.removeItem('token')
       window.location.href = '/login'
+    } else if (error.response?.status === 403) {
+      ElMessage.error('没有权限或登录已失效，请重新登录')
     }
     return Promise.reject(error)
   }
@@ -39,6 +47,8 @@ export const api = {
     login: (data: any) => request({ url: '/auth/login', method: 'POST', data }),
     sendSms: (data: any) => request({ url: '/auth/send-sms', method: 'POST', data }),
     resetPassword: (data: any) => request({ url: '/auth/reset-password', method: 'POST', data }),
+    changePassword: (data: { oldPassword: string; newPassword: string; confirmPassword: string }) =>
+      request({ url: '/auth/change-password', method: 'POST', data }),
     getUserInfo: () => request({ url: '/auth/info', method: 'GET' }),
     logout: () => request({ url: '/auth/logout', method: 'POST' }),
   },
@@ -53,29 +63,55 @@ export const api = {
     create: (data: any) => request({ url: '/project', method: 'POST', data }),
     update: (data: any) => request({ url: '/project', method: 'PUT', data }),
     delete: (id: number) => request({ url: `/project/${id}`, method: 'DELETE' }),
+    submit: (id: number) => request({ url: `/project/${id}/submit`, method: 'POST' }),
   },
   
   contract: {
+    template: {
+      list: (params?: { contractType?: number; onlyEnabled?: number }) =>
+        request({ url: '/contract/template/list', method: 'GET', params }),
+      importDocx: (data: FormData) =>
+        request({ url: '/contract/template/import-docx', method: 'POST', data, headers: { 'Content-Type': 'multipart/form-data' } }),
+      update: (data: any) => request({ url: '/contract/template', method: 'PUT', data }),
+      delete: (id: number) => request({ url: `/contract/template/${id}`, method: 'DELETE' }),
+      draft: (templateId: number, params?: { projectId?: number; supplierId?: number }) =>
+        request({ url: `/contract/template/draft/${templateId}`, method: 'GET', params }),
+    },
     income: {
       list: () => request({ url: '/contract/income/list', method: 'GET' }),
+      importGlodon: (data: FormData) =>
+        request({ url: '/contract/income/import-glodon', method: 'POST', data, headers: { 'Content-Type': 'multipart/form-data' } }),
+      createPurchaseDraft: (data: {
+        projectId: number
+        projectName?: string
+        contractNo?: string
+        contractName?: string
+        rows: any[]
+      }) => request({ url: '/contract/income/create-purchase-draft', method: 'POST', data }),
       page: (params: any) => request({ url: '/contract/income/page', method: 'GET', params }),
       get: (id: number) => request({ url: `/contract/income/${id}`, method: 'GET' }),
       create: (data: any) => request({ url: '/contract/income', method: 'POST', data }),
       update: (data: any) => request({ url: '/contract/income', method: 'PUT', data }),
       delete: (id: number) => request({ url: `/contract/income/${id}`, method: 'DELETE' }),
+      submit: (id: number) => request({ url: `/contract/income/${id}/submit`, method: 'POST' }),
     },
     expense: {
+      categories: () => request({ url: '/contract/expense/categories', method: 'GET' }),
+      importItems: (data: FormData) =>
+        request({ url: '/contract/expense/import-items', method: 'POST', data, headers: { 'Content-Type': 'multipart/form-data' } }),
       list: () => request({ url: '/contract/expense/list', method: 'GET' }),
       page: (params: any) => request({ url: '/contract/expense/page', method: 'GET', params }),
       get: (id: number) => request({ url: `/contract/expense/${id}`, method: 'GET' }),
       create: (data: any) => request({ url: '/contract/expense', method: 'POST', data }),
       update: (data: any) => request({ url: '/contract/expense', method: 'PUT', data }),
       delete: (id: number) => request({ url: `/contract/expense/${id}`, method: 'DELETE' }),
+      generatePrintFile: (data: any) => request({ url: '/contract/expense/print/generate', method: 'POST', data }),
     },
   },
   
   statement: {
     list: () => request({ url: '/statement/list', method: 'GET' }),
+    summary: () => request({ url: '/statement/summary', method: 'GET' }),
     page: (params: any) => request({ url: '/statement/page', method: 'GET', params }),
     get: (id: number) => request({ url: `/statement/${id}`, method: 'GET' }),
     create: (data: any) => request({ url: '/statement', method: 'POST', data }),
@@ -83,7 +119,7 @@ export const api = {
     delete: (id: number) => request({ url: `/statement/${id}`, method: 'DELETE' }),
     submit: (id: number) => request({ url: `/statement/${id}/submit`, method: 'POST' }),
     getConfig: (projectId: number) => request({ url: `/statement/config/${projectId}`, method: 'GET' }),
-    updateConfig: (projectId: number, data: any) => request({ url: `/statement/config/${projectId}`, method: 'PUT', data }),
+    updateConfig: (projectId: number, data: any) => request({ url: `/statement/config/${projectId}`, method: 'PUT' }),
     generateManual: (data: any) => request({ url: '/statement/generate-manual', method: 'POST', data }),
     getDifferencePeriods: (projectId: number) => request({ url: `/statement/difference/periods/${projectId}`, method: 'GET' }),
     getDifferenceAnalysis: (params: any) => request({ url: '/statement/difference/analysis', method: 'GET', params }),
@@ -95,6 +131,7 @@ export const api = {
   
   paymentSupervision: {
     list: () => request({ url: '/payment-supervision/list', method: 'GET' }),
+    summary: () => request({ url: '/payment-supervision/summary', method: 'GET' }),
     page: (params: any) => request({ url: '/payment-supervision/page', method: 'GET', params }),
     get: (id: number) => request({ url: `/payment-supervision/${id}`, method: 'GET' }),
     create: (data: any) => request({ url: '/payment-supervision', method: 'POST', data }),
@@ -128,6 +165,7 @@ export const api = {
       verifyInvoice: (data: any) => request({ url: '/expense/report/invoice-verify', method: 'POST', data }),
       export: (data: any) => request({ url: '/expense/report/export', method: 'POST', data }),
       getApprovalTrace: (id: number) => request({ url: `/expense/report/${id}/approval-trace`, method: 'GET' }),
+      summary: (params?: any) => request({ url: '/expense/report/summary', method: 'GET', params }),
     },
   },
   
@@ -137,7 +175,13 @@ export const api = {
     get: (id: number) => request({ url: `/purchase/${id}`, method: 'GET' }),
     create: (data: any) => request({ url: '/purchase', method: 'POST', data }),
     update: (data: any) => request({ url: '/purchase', method: 'PUT', data }),
+    generateFromIncomeContract: (data: { contractId: number; autoSubmit?: boolean }) =>
+      request({ url: '/purchase/generate-from-income-contract', method: 'POST', data }),
+    importTemplateQuery: () => '/api/purchase/import-template',
+    importExcel: (data: FormData) =>
+      request({ url: '/purchase/import-excel', method: 'POST', data, headers: { 'Content-Type': 'multipart/form-data' } }),
     delete: (id: number) => request({ url: `/purchase/${id}`, method: 'DELETE' }),
+    submit: (id: number) => request({ url: `/purchase/${id}/submit`, method: 'POST' }),
     price: {
       baseList: (params: any) => request({ url: '/purchase/price/base/list', method: 'GET', params }),
       standardList: (params: any) => request({ url: '/purchase/price/standard/list', method: 'GET', params }),
@@ -158,7 +202,7 @@ export const api = {
     confirmPrice: (data: any) => request({ url: '/purchase/confirm-price', method: 'POST', data }),
   },
   
-  supplier: {
+supplier: {
     list: () => request({ url: '/supplier/list', method: 'GET' }),
     page: (params: any) => request({ url: '/supplier/page', method: 'GET', params }),
     get: (id: number) => request({ url: `/supplier/${id}`, method: 'GET' }),
@@ -170,7 +214,7 @@ export const api = {
       get: (id: number) => request({ url: `/supplier/rating/${id}`, method: 'GET' }),
       recalc: (id: number) => request({ url: `/supplier/rating/${id}/recalc`, method: 'POST' }),
       export: (params: any) => request({ url: '/supplier/rating/export', method: 'GET', params }),
-    },
+    }
   },
   
   material: {
@@ -201,25 +245,38 @@ export const api = {
     getProgress: (id: number) => request({ url: `/gantt/${id}/progress`, method: 'GET' }),
     updateProgress: (id: number, data: any) => request({ url: `/gantt/${id}/progress`, method: 'PUT', data }),
     getIncomeSplit: (contractId: number) => request({ url: `/gantt/income-split/${contractId}`, method: 'GET' }),
+    validateTaskPhotos: (data: { ganttId?: number; taskId?: number; handlerId?: number; taskName: string; progress: number; photos: string[] }) =>
+      request({ url: '/gantt/task-photo-validate', method: 'POST', data }),
+    notifyHiddenWorkPhotoUploaded: (data: { ganttId: number; projectId: number; taskId: number; taskName: string; photoUrl: string; fallbackHandlerId?: number }) =>
+      request({ url: '/gantt/hidden-work/photo-uploaded', method: 'POST', data }),
   },
   
+  /** 审批待办（后端：/api/approval/todo） */
   todo: {
-    list: (params: any) => request({ url: '/todo/list', method: 'GET', params }),
-    get: (id: number) => request({ url: `/todo/${id}`, method: 'GET' }),
-    count: () => request({ url: '/todo/count', method: 'GET' }),
-    handle: (id: number, data: any) => request({ url: `/todo/${id}/handle`, method: 'POST', data }),
+    list: (params: { userId: number; category?: string; bizType?: string; keyword?: string; page?: number; size?: number }) =>
+      request({ url: '/approval/todo', method: 'GET', params }),
+    count: (params: { userId: number }) => request({ url: '/approval/todo/count', method: 'GET', params }),
+  },
+
+  approval: {
+    history: (instanceId: number) => request({ url: `/approval/${instanceId}/history`, method: 'GET' }),
+    delegate: (instanceId: number, params: { fromUserId: number; toUserId: number; opinion?: string }) =>
+      request({ url: `/approval/${instanceId}/delegate`, method: 'POST', params }),
+    flowDefs: () => request({ url: '/approval/def/list', method: 'GET' }),
+    saveFlowDef: (data: any) => request({ url: '/approval/def/save', method: 'POST', data }),
+    initFlowDefs: () => request({ url: '/approval/def/init', method: 'POST' }),
   },
   
   announcement: {
-    list: (params: any) => request({ url: '/announcement/list', method: 'GET', params }),
-    get: (id: number) => request({ url: `/announcement/${id}`, method: 'GET' }),
-    create: (data: any) => request({ url: '/announcement', method: 'POST', data }),
-    update: (data: any) => request({ url: '/announcement', method: 'PUT', data }),
-    delete: (id: number) => request({ url: `/announcement/${id}`, method: 'DELETE' }),
-    submit: (id: number) => request({ url: `/announcement/${id}/submit`, method: 'POST' }),
-    publish: (id: number) => request({ url: `/announcement/${id}/publish`, method: 'POST' }),
-    offline: (id: number) => request({ url: `/announcement/${id}/offline`, method: 'POST' }),
-    carousel: (params: any) => request({ url: '/announcement/carousel', method: 'GET', params }),
+    list: (params: any) => request({ url: '/system/announcement/list', method: 'GET', params }),
+    get: (id: number) => request({ url: `/system/announcement/${id}`, method: 'GET' }),
+    create: (data: any) => request({ url: '/system/announcement', method: 'POST', data }),
+    update: (data: any) => request({ url: '/system/announcement', method: 'PUT', data }),
+    delete: (id: number) => request({ url: `/system/announcement/${id}`, method: 'DELETE' }),
+    submit: (id: number) => request({ url: `/system/announcement/${id}/submit`, method: 'POST' }),
+    publish: (id: number) => request({ url: `/system/announcement/${id}/publish`, method: 'POST' }),
+    offline: (id: number) => request({ url: `/system/announcement/${id}/offline`, method: 'POST' }),
+    carousel: (params: any) => request({ url: '/system/announcement/carousel', method: 'GET', params }),
   },
   
   company: {
@@ -232,6 +289,7 @@ export const api = {
   invoice: {
     list: (params: any) => request({ url: '/invoice/list', method: 'GET', params }),
     page: (params: any) => request({ url: '/invoice/page', method: 'GET', params }),
+    summary: (params?: any) => request({ url: '/invoice/summary', method: 'GET', params }),
     get: (id: number) => request({ url: `/invoice/${id}`, method: 'GET' }),
     create: (data: any) => request({ url: '/invoice', method: 'POST', data }),
     update: (data: any) => request({ url: '/invoice', method: 'PUT', data }),
@@ -247,10 +305,29 @@ export const api = {
       create: (data: any) => request({ url: '/payment-plan', method: 'POST', data }),
       update: (data: any) => request({ url: '/payment-plan', method: 'PUT', data }),
       delete: (id: number) => request({ url: `/payment-plan/${id}`, method: 'DELETE' }),
+      summary: () => request({ url: '/payment-plan/summary', method: 'GET' }),
       monthly: (month: string) => request({ url: `/payment-plan/monthly/${month}`, method: 'GET' }),
       getByContract: (contractId: number) => request({ url: `/payment-plan/contracts/${contractId}`, method: 'GET' }),
       generateMonthly: (data: any) => request({ url: '/payment-plan/generate-monthly', method: 'POST', data }),
       updateStatus: (id: number, data: any) => request({ url: `/payment-plan/${id}/status`, method: 'PUT', data }),
+      /** 与列表筛选一致；需 fetch + blob 下载 */
+      exportCsvQuery: (params: {
+        contractId?: number
+        contractIds?: number[]
+        projectId?: number
+        planMonth?: string
+        status?: number
+      }) => {
+        const q = new URLSearchParams()
+        if (params.contractId != null) q.set('contractId', String(params.contractId))
+        if (params.projectId != null) q.set('projectId', String(params.projectId))
+        if (params.planMonth) q.set('planMonth', params.planMonth)
+        if (params.status != null) q.set('status', String(params.status))
+        if (params.contractIds?.length) {
+          for (const id of params.contractIds) q.append('contractIds', String(id))
+        }
+        return `/api/payment-plan/export/csv?${q.toString()}`
+      },
     },
   },
   
@@ -287,6 +364,7 @@ export const api = {
     get: (id: number) => request({ url: `/cost/${id}`, method: 'GET' }),
     create: (data: any) => request({ url: '/cost', method: 'POST', data }),
     update: (data: any) => request({ url: '/cost', method: 'PUT', data }),
+    summary: (params?: any) => request({ url: '/cost/summary', method: 'GET', params }),
     statistics: (params: any) => request({ url: '/cost/statistics', method: 'GET', params }),
     daily: (params: any) => request({ url: '/cost/daily', method: 'GET', params }),
     monthly: (params: any) => request({ url: '/cost/monthly', method: 'GET', params }),
@@ -307,6 +385,17 @@ export const api = {
     warnings: (params: any) => request({ url: '/budget/warning', method: 'GET', params }),
   },
   
+  report: {
+    overview: (params?: any) => request({ url: '/report/overview', method: 'GET', params }),
+    trend: (params?: { months?: number }) => request({ url: '/report/trend', method: 'GET', params }),
+    /** 返回带查询参数的导出地址（需用 fetch + blob 下载，见自定义报表页） */
+    exportCsvQuery: (params: { type: string; from: string; to: string; projectId?: number }) => {
+      const q = new URLSearchParams({ type: params.type, from: params.from, to: params.to })
+      if (params.projectId != null) q.set('projectId', String(params.projectId))
+      return `/api/report/export/csv?${q.toString()}`
+    },
+  },
+
   paymentApply: {
     list: (params: any) => request({ url: '/payment-apply/list', method: 'GET', params }),
     page: (params: any) => request({ url: '/payment-apply/page', method: 'GET', params }),
@@ -314,21 +403,37 @@ export const api = {
     create: (data: any) => request({ url: '/payment-apply', method: 'POST', data }),
     update: (data: any) => request({ url: '/payment-apply', method: 'PUT', data }),
     delete: (id: number) => request({ url: `/payment-apply/${id}`, method: 'DELETE' }),
+    summary: (params?: any) => request({ url: '/payment-apply/summary', method: 'GET', params }),
     createLabor: (data: any) => request({ url: '/payment-apply/labor', method: 'POST', data }),
     createMaterial: (data: any) => request({ url: '/payment-apply/material', method: 'POST', data }),
     getByContract: (contractId: number) => request({ url: `/payment-apply/by-contract/${contractId}`, method: 'GET' }),
     submit: (id: number) => request({ url: `/payment-apply/${id}/submit`, method: 'POST' }),
-    approve: (params: any) => request({ url: `/payment-apply/${id}/approve`, method: 'POST', params }),
+    approve: (id: number, params: any) => request({ url: `/payment-apply/${id}/approve`, method: 'POST', params }),
     associateInvoice: (id: number, data: any) => request({ url: `/payment-apply/${id}/associate-invoice`, method: 'POST', data }),
   },
   
   system: {
+    menu: {
+      tree: () => request({ url: '/system/menu/tree', method: 'GET' }),
+    },
     user: {
-      list: () => request({ url: '/system/user/list', method: 'GET' }),
+      list: (params?: any) => request({ url: '/system/user/list', method: 'GET', params }),
+      selectList: () => request({ url: '/system/user/select-list', method: 'GET' }),
       get: (id: number) => request({ url: `/system/user/${id}`, method: 'GET' }),
       create: (data: any) => request({ url: '/system/user', method: 'POST', data }),
       update: (data: any) => request({ url: '/system/user', method: 'PUT', data }),
       delete: (id: number) => request({ url: `/system/user/${id}`, method: 'DELETE' }),
+      updateRoles: (id: number, data: any) => request({ url: `/system/user/${id}/roles`, method: 'PUT', data }),
+    },
+    role: {
+      list: (params?: any) => request({ url: '/system/role/list', method: 'GET', params }),
+      selectList: () => request({ url: '/system/role/select-list', method: 'GET' }),
+      get: (id: number) => request({ url: `/system/role/${id}`, method: 'GET' }),
+      create: (data: any) => request({ url: '/system/role', method: 'POST', data }),
+      update: (data: any) => request({ url: '/system/role', method: 'PUT', data }),
+      delete: (id: number) => request({ url: `/system/role/${id}`, method: 'DELETE' }),
+      getPermissions: (id: number) => request({ url: `/system/role/${id}/permissions`, method: 'GET' }),
+      savePermissions: (id: number, data: any) => request({ url: `/system/role/${id}/permissions`, method: 'POST', data }),
     },
     department: {
       list: () => request({ url: '/system/department/list', method: 'GET' }),

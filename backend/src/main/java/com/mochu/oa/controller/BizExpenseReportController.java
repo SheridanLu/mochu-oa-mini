@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mochu.oa.common.Result;
 import com.mochu.oa.entity.BizExpenseReport;
+import com.mochu.oa.entity.BizBudgetAllocation;
 import com.mochu.oa.service.BizExpenseReportService;
 import com.mochu.oa.service.BizBudgetAllocationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -43,8 +46,65 @@ public class BizExpenseReportController {
             @Parameter(description = "报销人ID") @RequestParam(required = false) Long reporterId,
             @Parameter(description = "部门ID") @RequestParam(required = false) Long departmentId,
             @Parameter(description = "项目ID") @RequestParam(required = false) Long projectId,
-            @Parameter(description = "状态") @RequestParam(required = false) Integer status) {
+            @Parameter(description = "费用类别") @RequestParam(required = false) Integer expenseCategory,
+            @Parameter(description = "状态") @RequestParam(required = false) Integer status,
+            @Parameter(description = "创建开始日期 yyyy-MM-dd") @RequestParam(required = false) String createdBegin,
+            @Parameter(description = "创建结束日期 yyyy-MM-dd") @RequestParam(required = false) String createdEnd) {
         Page<BizExpenseReport> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<BizExpenseReport> wrapper = buildScopeWrapper(
+                reporterId, departmentId, projectId, expenseCategory, createdBegin, createdEnd);
+        if (status != null) {
+            wrapper.eq(BizExpenseReport::getStatus, status);
+        }
+        wrapper.orderByDesc(BizExpenseReport::getCreatedAt);
+        Page<BizExpenseReport> result = bizExpenseReportService.page(page, wrapper);
+        return Result.success(result);
+    }
+
+    @GetMapping("/summary")
+    @Operation(summary = "报销统计（与部门/项目/类别/日期范围一致；不含状态筛选，便于看整体进度）")
+    public Result<Map<String, Object>> summary(
+            @RequestParam(required = false) Long reporterId,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) Integer expenseCategory,
+            @RequestParam(required = false) String createdBegin,
+            @RequestParam(required = false) String createdEnd) {
+        LambdaQueryWrapper<BizExpenseReport> pendingW = buildScopeWrapper(
+                reporterId, departmentId, projectId, expenseCategory, createdBegin, createdEnd);
+        pendingW.in(BizExpenseReport::getStatus, 2, 3);
+        long pending = bizExpenseReportService.count(pendingW);
+
+        LambdaQueryWrapper<BizExpenseReport> paidW = buildScopeWrapper(
+                reporterId, departmentId, projectId, expenseCategory, createdBegin, createdEnd);
+        paidW.eq(BizExpenseReport::getStatus, 6);
+        long paid = bizExpenseReportService.count(paidW);
+
+        LambdaQueryWrapper<BizBudgetAllocation> bw = new LambdaQueryWrapper<>();
+        if (departmentId != null) {
+            bw.eq(BizBudgetAllocation::getDepartmentId, departmentId);
+        }
+        if (projectId != null) {
+            bw.eq(BizBudgetAllocation::getProjectId, projectId);
+        }
+        bw.and(q -> q.ge(BizBudgetAllocation::getUsageRate, new BigDecimal("80"))
+                .or(w -> w.apply("amount IS NOT NULL AND amount > 0 AND used_amount / amount >= 0.8")));
+        long budgetWarningCount = bizBudgetAllocationService.count(bw);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("pendingApproval", pending);
+        data.put("paid", paid);
+        data.put("budgetWarning", budgetWarningCount);
+        return Result.success(data);
+    }
+
+    private LambdaQueryWrapper<BizExpenseReport> buildScopeWrapper(
+            Long reporterId,
+            Long departmentId,
+            Long projectId,
+            Integer expenseCategory,
+            String createdBegin,
+            String createdEnd) {
         LambdaQueryWrapper<BizExpenseReport> wrapper = new LambdaQueryWrapper<>();
         if (reporterId != null) {
             wrapper.eq(BizExpenseReport::getReporterId, reporterId);
@@ -55,12 +115,18 @@ public class BizExpenseReportController {
         if (projectId != null) {
             wrapper.eq(BizExpenseReport::getProjectId, projectId);
         }
-        if (status != null) {
-            wrapper.eq(BizExpenseReport::getStatus, status);
+        if (expenseCategory != null) {
+            wrapper.eq(BizExpenseReport::getExpenseCategory, expenseCategory);
         }
-        wrapper.orderByDesc(BizExpenseReport::getCreatedAt);
-        Page<BizExpenseReport> result = bizExpenseReportService.page(page, wrapper);
-        return Result.success(result);
+        if (createdBegin != null && !createdBegin.isBlank()) {
+            LocalDate d = LocalDate.parse(createdBegin.trim());
+            wrapper.ge(BizExpenseReport::getCreatedAt, LocalDateTime.of(d, LocalTime.MIN));
+        }
+        if (createdEnd != null && !createdEnd.isBlank()) {
+            LocalDate d = LocalDate.parse(createdEnd.trim());
+            wrapper.le(BizExpenseReport::getCreatedAt, LocalDateTime.of(d, LocalTime.MAX));
+        }
+        return wrapper;
     }
     
     @GetMapping("/{id}")
@@ -96,7 +162,7 @@ public class BizExpenseReportController {
     public Result<Void> submit(@Parameter(description = "报销单ID") @PathVariable Long id) {
         BizExpenseReport report = new BizExpenseReport();
         report.setId(id);
-        report.setStatus(1);
+        report.setStatus(2);
         bizExpenseReportService.updateById(report);
         return Result.success(null);
     }
@@ -109,7 +175,7 @@ public class BizExpenseReportController {
             @Parameter(description = "审批意见") @RequestParam(required = false) String opinion) {
         BizExpenseReport report = new BizExpenseReport();
         report.setId(id);
-        report.setStatus("approve".equals(action) ? 2 : 3);
+        report.setStatus("approve".equals(action) ? 4 : 5);
         bizExpenseReportService.updateById(report);
         return Result.success(null);
     }

@@ -25,7 +25,7 @@ public class BizExpenseContract extends BaseEntity {
     private String projectName;
     
     @TableField("contract_type")
-    private Integer contractType;
+    private String contractType;
     
     @TableField("supplier_id")
     private Long supplierId;
@@ -65,4 +65,13 @@ public class BizExpenseContract extends BaseEntity {
     
     @TableField("remark")
     private String remark;
+
+    @TableField(exist = false)
+    private Long templateId;
+
+    @TableField(exist = false)
+    private Integer templateVersion;
+
+    @TableField(exist = false)
+    private String templateContentHash;
 }

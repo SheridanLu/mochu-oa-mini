@@ -10,27 +10,27 @@
       </div>
     </div>
     <el-card class="filter-card">
-      <el-form :inline="true">
+      <el-form :inline="true" :model="filterForm">
+        <el-form-item label="物资名称">
+          <el-input v-model="filterForm.materialName" placeholder="请输入物资名称" clearable style="width: 180px" />
+        </el-form-item>
         <el-form-item label="物资分类">
-          <el-select placeholder="请选择" style="width: 140px">
+          <el-select v-model="filterForm.categoryId" placeholder="请选择" clearable style="width: 140px">
             <el-option label="钢材" value="1" />
             <el-option label="水泥" value="2" />
             <el-option label="木材" value="3" />
           </el-select>
         </el-form-item>
-        <el-form-item label="仓库">
-          <el-select placeholder="请选择" style="width: 140px">
-            <el-option label="主仓库" value="1" />
-            <el-option label="辅料仓库" value="2" />
-          </el-select>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">搜索</el-button>
+          <el-button @click="handleReset">重置</el-button>
         </el-form-item>
-        <el-form-item><el-button type="primary">搜索</el-button></el-form-item>
       </el-form>
     </el-card>
     <el-card class="table-card">
       <el-tabs v-model="activeTab">
         <el-tab-pane label="物资库存" name="stock">
-          <el-table :data="stockData" stripe>
+          <el-table :data="stockData" stripe v-loading="loadingStock">
             <el-table-column prop="materialName" label="物资名称" min-width="150" />
             <el-table-column prop="specModel" label="规格型号" width="120" />
             <el-table-column prop="warehouseName" label="仓库" width="100" />
@@ -40,9 +40,9 @@
               <template #default="{ row }">{{ formatAmount(row.unitPrice) }}</template>
             </el-table-column>
             <el-table-column label="操作" width="120">
-              <template #default>
-                <el-button type="primary" link @click="handleOutbound">出库</el-button>
-                <el-button type="primary" link>入库</el-button>
+              <template #default="{ row }">
+                <el-button type="primary" link @click="handleOutbound(row)">出库</el-button>
+                <el-button type="primary" link @click="handleInbound(row)">入库</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -80,8 +80,8 @@
             <el-table-column prop="outDate" label="出库日期" width="110" />
             <el-table-column prop="receiverName" label="领料人" width="100" />
             <el-table-column label="操作" width="80">
-              <template #default>
-                <el-button type="primary" link>查看</el-button>
+              <template #default="{ row }">
+                <el-button type="primary" link @click="handleViewOutbound(row)">查看</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -149,29 +149,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { api } from '@/api'
 
 const router = useRouter()
-import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
+import { ElMessage, FormInstance, FormRules } from 'element-plus'
 import { WarningFilled } from '@element-plus/icons-vue'
 
 const activeTab = ref('stock')
+const loadingStock = ref(false)
 const outboundDialogVisible = ref(false)
 const transferBlockVisible = ref(false)
 const outboundFormRef = ref<FormInstance>()
+const filterForm = reactive({
+  materialName: '',
+  categoryId: ''
+})
 
-const stockData = ref([
-  { id: 1, materialName: '螺纹钢', specModel: 'HRB400φ12', warehouseName: '主仓库', quantity: 5000, availableQuantity: 4500, unitPrice: 4500 },
-  { id: 2, materialName: '水泥', specModel: 'P.O42.5散装', warehouseName: '主仓库', quantity: 200, availableQuantity: 180, unitPrice: 380 }
-])
-const entryData = ref([{ id: 1, entryNo: 'RK202604001', projectName: 'XX项目', entryType: 1, totalAmount: 50000, entryDate: '2026-04-10', status: 4 }])
-const outData = ref([
-  { id: 1, outNo: 'CK202604001', projectName: 'XX项目', contractNo: 'HT2026001', entryNo: 'RK202604001', outType: 1, totalAmount: 20000, outDate: '2026-04-12', receiverName: '张三' }
-])
+const stockData = ref<any[]>([])
+const entryData = ref<any[]>([])
+const outData = ref<any[]>([])
 
-const projectList = ref([{ id: 1, name: 'XX项目一' }, { id: 2, name: 'XX项目二' }])
-const entryList = ref([{ id: 1, entryNo: 'RK202604001' }, { id: 2, entryNo: 'RK202604002' }])
+const projectList = ref<any[]>([])
+const entryList = ref<any[]>([])
 
 const outboundForm = reactive({
   outType: 1,
@@ -188,9 +189,51 @@ const outboundRules: FormRules = {
 
 const formatAmount = (v: number) => new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(v)
 const handleCreate = () => router.push('/material/create')
+const handleInbound = (row: any) => {
+  const name = row?.materialName || '该物资'
+  ElMessage.info(`${name} 的入库请在采购/调拨流程中完成，入库记录会自动同步`)
+}
 
-const handleOutbound = () => {
-  outboundForm.items = [{ materialId: 1, materialName: '螺纹钢', specModel: 'HRB400φ12', quantity: 0, maxQuantity: 100 }]
+const fetchStock = async () => {
+  loadingStock.value = true
+  try {
+    const res: any = await api.material.page({
+      pageNum: 1,
+      pageSize: 200,
+      materialName: filterForm.materialName || undefined,
+      categoryId: filterForm.categoryId || undefined
+    })
+    const records = res.data?.records || []
+    stockData.value = records.map((m: any) => ({
+      id: m.id,
+      materialName: m.materialName,
+      specModel: m.specModel,
+      warehouseName: m.warehouseName || '—',
+      quantity: m.quantity ?? 0,
+      availableQuantity: m.availableQuantity ?? m.quantity ?? 0,
+      unitPrice: m.unitPrice ?? 0
+    }))
+  } catch (e: any) {
+    ElMessage.error(e.message || '获取物资库存失败')
+  } finally {
+    loadingStock.value = false
+  }
+}
+
+const handleSearch = () => fetchStock()
+const handleReset = () => {
+  Object.assign(filterForm, { materialName: '', categoryId: '' })
+  fetchStock()
+}
+
+const handleOutbound = (row?: any) => {
+  outboundForm.items = [{
+    materialId: row?.id ?? 1,
+    materialName: row?.materialName ?? '螺纹钢',
+    specModel: row?.specModel ?? 'HRB400φ12',
+    quantity: 0,
+    maxQuantity: Number(row?.availableQuantity ?? 100)
+  }]
   outboundDialogVisible.value = true
 }
 
@@ -200,27 +243,99 @@ const addOutboundItem = () => {
 
 const handleOutboundSubmit = async () => {
   if (!outboundFormRef.value) return
-  await outboundFormRef.value.validate((valid) => {
-    if (!valid) return
-    
+  try {
+    await outboundFormRef.value.validate()
     if (outboundForm.outType === 2) {
       transferBlockVisible.value = true
       return
     }
-    
     const hasContractNo = outboundForm.contractNo.trim() !== ''
     const hasEntryNo = outboundForm.entryNo.trim() !== ''
     if (!hasContractNo && !hasEntryNo) {
       ElMessage.error('现场出库必须关联项目合同编号或入库单号')
       return
     }
-    
+    await api.material.outbound({
+      outType: outboundForm.outType,
+      projectId: outboundForm.projectId,
+      contractNo: outboundForm.contractNo,
+      warehouseEntryNo: outboundForm.entryNo,
+      items: outboundForm.items
+    })
     outboundDialogVisible.value = false
     ElMessage.success('出库成功')
-  })
+    fetchStock()
+  } catch (e: any) {
+    if (e?.message) ElMessage.error(e.message)
+  }
 }
 
-const goToTransfer = () => { transferBlockVisible.value = false; console.log('跳转调拨单页面') }
+const goToTransfer = () => {
+  transferBlockVisible.value = false
+  ElMessage.info('请先在审批中心发起调拨审批流程')
+}
+
+const handleViewOutbound = (row: any) => {
+  const no = row?.outNo || '当前记录'
+  ElMessage.info(`${no} 详情页建设中，当前可在列表中查看关键字段`)
+}
+
+const fetchProjects = async () => {
+  try {
+    const res: any = await api.project.list()
+    const list = Array.isArray(res.data) ? res.data : []
+    projectList.value = list.map((p: any) => ({ id: p.id, name: p.projectName || p.name || `项目-${p.id}` }))
+  } catch {
+    projectList.value = []
+  }
+}
+
+const fetchEntryRecords = async () => {
+  try {
+    const res: any = await api.purchase.page({ pageNum: 1, pageSize: 100 })
+    const records = Array.isArray(res.data?.records) ? res.data.records : []
+    entryData.value = records.map((r: any) => ({
+      id: r.id,
+      entryNo: r.entryNo || r.orderNo || `RK-${r.id}`,
+      projectName: r.projectName || '—',
+      entryType: Number(r.entryType ?? 1),
+      totalAmount: Number(r.totalAmount ?? r.totalBudget ?? 0),
+      entryDate: r.entryDate || r.createdAt || r.createTime || '—',
+      status: Number(r.status ?? 1),
+    }))
+    entryList.value = entryData.value.map((r: any) => ({ id: r.id, entryNo: r.entryNo }))
+  } catch {
+    entryData.value = []
+    entryList.value = []
+  }
+}
+
+const fetchOutboundRecords = async () => {
+  try {
+    const res: any = await api.material.getTransferLog({})
+    const list = Array.isArray(res.data) ? res.data : []
+    outData.value = list.map((r: any, idx: number) => ({
+      id: r.id ?? idx + 1,
+      outNo: r.outNo || r.transferNo || `CK-${r.id ?? idx + 1}`,
+      projectName: r.projectName || '—',
+      contractNo: r.contractNo || '—',
+      entryNo: r.entryNo || '—',
+      outType: Number(r.outType ?? 2),
+      totalAmount: Number(r.totalAmount ?? 0),
+      outDate: r.outDate || r.createTime || '—',
+      receiverName: r.receiverName || r.operatorName || '—',
+    }))
+  } catch {
+    outData.value = []
+  }
+}
+
+onMounted(() => {
+  fetchStock()
+  fetchProjects()
+  fetchEntryRecords()
+  fetchOutboundRecords()
+})
 </script>
 
 <style scoped>

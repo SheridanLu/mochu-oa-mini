@@ -123,7 +123,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { User, Lock, Message, ArrowLeft } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
-import api from '../../api'
+import { api } from '../../api'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -239,7 +239,8 @@ const handleLogin = async () => {
         realName: res.data?.realName || '',
         avatar: res.data?.avatar || '',
         department: res.data?.departmentName || '',
-        roles: res.data?.roles || []
+        roles: res.data?.roles || [],
+        mustChangePassword: !!res.data?.mustChangePassword
       })
       ElMessage.success('登录成功')
       router.push('/home')

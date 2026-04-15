@@ -137,9 +137,13 @@
           <el-date-picker v-model="feedbackForm.estimatedDate" type="date" placeholder="选择预计回款时间" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
         <el-form-item label="上传附件">
-          <el-upload action="/api/v1/attachment/upload" multiple>
+          <AttachmentUpload
+            :limit="10"
+            :multiple="true"
+            @uploaded="handleFeedbackUploadSuccess"
+          >
             <el-button>点击上传</el-button>
-          </el-upload>
+          </AttachmentUpload>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -155,9 +159,10 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatAmount } from '../../../utils/format'
-import api from '../../../api'
+import { api } from '@/api'
 
 const route = useRoute()
+const router = useRouter()
 const id = computed(() => Number(route.query.id) || 0)
 const loading = ref(false)
 const showFeedbackDialog = ref(false)
@@ -194,7 +199,7 @@ const fetchDetail = async () => {
   finally { loading.value = false }
 }
 
-const handleEdit = () => console.log('编辑')
+const handleEdit = () => router.push(`/finance/supervision/edit?id=${id.value}`)
 const handleSubmit = async () => {
   try {
     await api.paymentSupervision.submit(id.value)
@@ -202,7 +207,10 @@ const handleSubmit = async () => {
     fetchDetail()
   } catch (e: any) { ElMessage.error(e.message) }
 }
-const handleAddFeedback = () => console.log('添加反馈')
+const handleAddFeedback = () => ElMessage.info('添加反馈功能开发中')
+const handleFeedbackUploadSuccess = (url: string, res: any) => {
+  if (res?.code === 200 && url) feedbackForm.attachments.push(url)
+}
 
 onMounted(() => { fetchDetail() })
 </script>

@@ -112,7 +112,7 @@ const fetchList = async () => {
       projectName: filterForm.projectName || undefined,
       status: filterForm.status || undefined
     }
-    const res = await request<{ data: any }>({ url: '/api/project/page', method: 'GET', params })
+    const res = await request<{ data: any }>({ url: '/project/page', method: 'GET', params })
     tableData.value = res.data?.records || []
     pagination.total = res.data?.total || 0
   } catch (e: any) {
@@ -137,7 +137,7 @@ const handleRefresh = () => { fetchList(); ElMessage.success('刷新成功') }
 const handleSubmit = async (row: any) => {
   try {
     await ElMessageBox.confirm('提交后将进入审批流程，确定提交？', '提示', { type: 'warning' })
-    await request({ url: `/api/project/${row.id}/submit`, method: 'POST' })
+    await request({ url: `/project/${row.id}/submit`, method: 'POST' })
     ElMessage.success('提交审批成功')
     fetchList()
   } catch (e: any) {

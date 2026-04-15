@@ -76,7 +76,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import api from '@/api'
+import { api } from '@/api'
 
 const router = useRouter()
 const loading = ref(false)

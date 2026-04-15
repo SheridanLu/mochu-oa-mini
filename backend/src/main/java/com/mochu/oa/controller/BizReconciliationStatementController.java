@@ -13,6 +13,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,22 +42,65 @@ public class BizReconciliationStatementController {
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "项目ID") @RequestParam(required = false) Long projectId,
+            @Parameter(description = "收入合同ID") @RequestParam(required = false) Long contractId,
             @Parameter(description = "状态") @RequestParam(required = false) Integer status,
-            @Parameter(description = "周期") @RequestParam(required = false) String period) {
+            @Parameter(description = "周期(单月)") @RequestParam(required = false) String period,
+            @Parameter(description = "周期起 YYYY-MM") @RequestParam(required = false) String periodStart,
+            @Parameter(description = "周期止 YYYY-MM") @RequestParam(required = false) String periodEnd,
+            @Parameter(description = "创建日期起") @RequestParam(required = false) LocalDate createdDateStart,
+            @Parameter(description = "创建日期止") @RequestParam(required = false) LocalDate createdDateEnd) {
         Page<BizReconciliationStatement> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<BizReconciliationStatement> wrapper = new LambdaQueryWrapper<>();
         if (projectId != null) {
             wrapper.eq(BizReconciliationStatement::getProjectId, projectId);
         }
+        if (contractId != null) {
+            wrapper.eq(BizReconciliationStatement::getContractId, contractId);
+        }
         if (status != null) {
             wrapper.eq(BizReconciliationStatement::getStatus, status);
         }
-        if (period != null) {
+        if (period != null && !period.isBlank()) {
             wrapper.eq(BizReconciliationStatement::getPeriod, period);
+        } else {
+            if (periodStart != null && !periodStart.isBlank()) {
+                wrapper.ge(BizReconciliationStatement::getPeriod, periodStart);
+            }
+            if (periodEnd != null && !periodEnd.isBlank()) {
+                wrapper.le(BizReconciliationStatement::getPeriod, periodEnd);
+            }
+        }
+        if (createdDateStart != null) {
+            wrapper.ge(BizReconciliationStatement::getCreatedAt, createdDateStart.atStartOfDay());
+        }
+        if (createdDateEnd != null) {
+            wrapper.le(BizReconciliationStatement::getCreatedAt, createdDateEnd.plusDays(1).atStartOfDay());
         }
         wrapper.orderByDesc(BizReconciliationStatement::getCreatedAt);
         Page<BizReconciliationStatement> result = bizReconciliationStatementService.page(page, wrapper);
         return Result.success(result);
+    }
+
+    @GetMapping("/summary")
+    @Operation(summary = "对账列表页统计卡片")
+    public Result<Map<String, Object>> summary() {
+        List<BizReconciliationStatement> all = bizReconciliationStatementService.list();
+        String ym = YearMonth.now().toString();
+        long pendingConfirm = all.stream().filter(s -> s.getStatus() != null && (s.getStatus() == 2 || s.getStatus() == 3)).count();
+        long abnormal = all.stream()
+                .filter(s -> (s.getStatus() != null && s.getStatus() == 5)
+                        || (s.getDifferenceAmount() != null
+                        && s.getDifferenceAmount().abs().compareTo(new BigDecimal("0.01")) > 0))
+                .count();
+        BigDecimal monthTotal = all.stream()
+                .filter(s -> s.getPeriod() != null && ym.equals(s.getPeriod()))
+                .map(s -> s.getContractAmount() != null ? s.getContractAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Map<String, Object> m = new HashMap<>();
+        m.put("pendingConfirm", pendingConfirm);
+        m.put("abnormalCount", abnormal);
+        m.put("monthAmountTotal", monthTotal);
+        return Result.success(m);
     }
     
     @GetMapping("/{id}")

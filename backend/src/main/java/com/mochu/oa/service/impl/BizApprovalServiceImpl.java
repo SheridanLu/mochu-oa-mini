@@ -14,9 +14,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -148,40 +150,78 @@ public class BizApprovalServiceImpl extends ServiceImpl<BizApprovalInstanceMappe
     }
     
     @Override
-    public List<Map<String, Object>> getTodoList(Long userId, String category, String bizType, String keyword, int page, int size) {
+    public Map<String, Object> getTodoList(Long userId, String category, String bizType, String keyword, int page, int size) {
+        String cat = null;
+        if (StringUtils.hasText(category)) {
+            cat = category.trim().toUpperCase(Locale.ROOT);
+            if (!"TODO".equals(cat) && !"DONE".equals(cat) && !"READ".equals(cat)) {
+                cat = "TODO";
+            }
+        }
+
         Page<BizApprovalTodo> p = new Page<>(page, size);
-        IPage<BizApprovalTodo> result = bizApprovalTodoMapper.selectPage(p,
-                new LambdaQueryWrapper<BizApprovalTodo>()
-                        .eq(BizApprovalTodo::getHandlerId, userId)
-                        .eq(category != null ? BizApprovalTodo::getCategory : null, category)
-                        .eq(bizType != null ? BizApprovalTodo::getInstanceId : null, null)
-                        .like(keyword != null ? BizApprovalTodo::getNodeName : null, keyword)
-                        .orderByDesc(BizApprovalTodo::getCreatedAt));
-        
+        LambdaQueryWrapper<BizApprovalTodo> wrapper = new LambdaQueryWrapper<BizApprovalTodo>()
+                .eq(BizApprovalTodo::getHandlerId, userId)
+                .eq(cat != null, BizApprovalTodo::getCategory, cat)
+                .orderByDesc(BizApprovalTodo::getCreatedAt);
+
+        if (StringUtils.hasText(bizType)) {
+            String bt = bizType.trim().toUpperCase(Locale.ROOT);
+            List<Long> instanceIds = list(new LambdaQueryWrapper<BizApprovalInstance>()
+                            .select(BizApprovalInstance::getId)
+                            .eq(BizApprovalInstance::getBizType, bt))
+                    .stream().map(BizApprovalInstance::getId).collect(Collectors.toList());
+            if (instanceIds.isEmpty()) {
+                Map<String, Object> empty = new HashMap<>();
+                empty.put("list", Collections.emptyList());
+                empty.put("total", 0L);
+                return empty;
+            }
+            wrapper.in(BizApprovalTodo::getInstanceId, instanceIds);
+        }
+
+        if (StringUtils.hasText(keyword)) {
+            String kw = keyword.trim();
+            List<Long> titleHits = list(new LambdaQueryWrapper<BizApprovalInstance>()
+                            .select(BizApprovalInstance::getId)
+                            .like(BizApprovalInstance::getTitle, kw))
+                    .stream().map(BizApprovalInstance::getId).collect(Collectors.toList());
+            wrapper.and(w -> {
+                w.like(BizApprovalTodo::getNodeName, kw);
+                if (!titleHits.isEmpty()) {
+                    w.or().in(BizApprovalTodo::getInstanceId, titleHits);
+                }
+            });
+        }
+
+        IPage<BizApprovalTodo> result = bizApprovalTodoMapper.selectPage(p, wrapper);
+
         List<Map<String, Object>> list = new ArrayList<>();
         for (BizApprovalTodo todo : result.getRecords()) {
             Map<String, Object> map = new HashMap<>();
             map.put("id", todo.getId());
+            map.put("todoNo", "TD-" + todo.getId());
             map.put("instanceId", todo.getInstanceId());
             map.put("nodeName", todo.getNodeName());
+            map.put("currentNode", todo.getNodeName());
             map.put("category", todo.getCategory());
-            map.put("priority", todo.getPriority());
+            int pr = todo.getPriority() == null || todo.getPriority() == 0 ? 3 : todo.getPriority();
+            map.put("priority", pr);
             map.put("createdAt", todo.getCreatedAt());
-            
+
             BizApprovalInstance instance = getById(todo.getInstanceId());
             if (instance != null) {
                 map.put("title", instance.getTitle());
                 map.put("bizType", instance.getBizType());
                 map.put("applicantName", instance.getApplicantName());
             }
+            map.put("projectName", "");
             list.add(map);
         }
-        return list;
-    }
-    
-    @Override
-    public List<Map<String, Object>> getDoneList(Long userId, String bizType, String keyword, int page, int size) {
-        return getTodoList(userId, "DONE", bizType, keyword, page, size);
+        Map<String, Object> out = new HashMap<>();
+        out.put("list", list);
+        out.put("total", result.getTotal());
+        return out;
     }
     
     @Override
@@ -304,6 +344,48 @@ public class BizApprovalServiceImpl extends ServiceImpl<BizApprovalInstanceMappe
                 new LambdaQueryWrapper<BizApprovalDef>()
                         .eq(BizApprovalDef::getBizType, bizType)
                         .eq(BizApprovalDef::getStatus, 1));
+    }
+
+    @Override
+    public List<BizApprovalDef> listFlowDefs() {
+        return bizApprovalDefMapper.selectList(new LambdaQueryWrapper<BizApprovalDef>()
+                .orderByAsc(BizApprovalDef::getBizType));
+    }
+
+    @Override
+    @Transactional
+    public void saveFlowDef(BizApprovalDef def) {
+        if (def == null || !StringUtils.hasText(def.getBizType())) {
+            throw new RuntimeException("bizType不能为空");
+        }
+        if (!StringUtils.hasText(def.getBizName())) {
+            throw new RuntimeException("bizName不能为空");
+        }
+        if (!StringUtils.hasText(def.getFlowJson())) {
+            throw new RuntimeException("flowJson不能为空");
+        }
+        List<Map<String, Object>> nodes = parseFlowNodes(def.getFlowJson());
+        if (nodes.isEmpty()) {
+            throw new RuntimeException("flowJson无有效节点");
+        }
+        String bizType = def.getBizType().trim().toUpperCase(Locale.ROOT);
+        BizApprovalDef existing = bizApprovalDefMapper.selectOne(
+                new LambdaQueryWrapper<BizApprovalDef>().eq(BizApprovalDef::getBizType, bizType));
+        if (existing == null) {
+            BizApprovalDef insert = new BizApprovalDef();
+            insert.setBizType(bizType);
+            insert.setBizName(def.getBizName().trim());
+            insert.setFlowJson(def.getFlowJson());
+            insert.setStatus(def.getStatus() == null ? 1 : def.getStatus());
+            insert.setVersion(def.getVersion() == null ? 1 : def.getVersion());
+            bizApprovalDefMapper.insert(insert);
+        } else {
+            existing.setBizName(def.getBizName().trim());
+            existing.setFlowJson(def.getFlowJson());
+            existing.setStatus(def.getStatus() == null ? existing.getStatus() : def.getStatus());
+            existing.setVersion((existing.getVersion() == null ? 1 : existing.getVersion()) + 1);
+            bizApprovalDefMapper.updateById(existing);
+        }
     }
     
     private List<Map<String, Object>> parseFlowNodes(String flowJson) {

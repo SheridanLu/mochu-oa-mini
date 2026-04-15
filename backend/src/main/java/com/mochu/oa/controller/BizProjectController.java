@@ -78,6 +78,24 @@ public class BizProjectController {
         bizProjectService.updateById(project);
         return Result.success(null);
     }
+
+    @PostMapping("/{id}/submit")
+    @Operation(summary = "提交项目审批（草稿/结算可提交为待审批）")
+    public Result<Void> submit(@Parameter(description = "项目ID") @PathVariable Long id) {
+        BizProject p = bizProjectService.getById(id);
+        if (p == null) {
+            return Result.notFound("项目不存在");
+        }
+        Integer status = p.getStatus();
+        if (status == null || (status != 1 && status != 6)) {
+            return Result.badRequest("仅筹备或结算状态可提交审批");
+        }
+        BizProject upd = new BizProject();
+        upd.setId(id);
+        upd.setStatus(2);
+        bizProjectService.updateById(upd);
+        return Result.success(null);
+    }
     
     @DeleteMapping("/{id}")
     @Operation(summary = "删除项目")

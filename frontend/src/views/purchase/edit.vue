@@ -47,6 +47,9 @@
                 <el-button type="primary" link @click="showBatchDialog = true" :disabled="!canEdit">批量写入</el-button>
                 <el-button type="primary" link @click="handleReverseOrder" :disabled="!canEdit">倒序</el-button>
                 <el-button type="primary" link @click="handleImportContract" :disabled="!canEdit">从合同附件导入</el-button>
+                <el-button type="primary" link :disabled="!canEdit" @click="triggerExcelImport">Excel导入</el-button>
+                <el-button type="primary" link @click="downloadExcelTemplate">下载导入模板</el-button>
+                <input ref="excelImportRef" type="file" accept=".xlsx,.xls,.csv" style="display: none" @change="handleExcelImport" />
               </div>
             </div>
           </template>
@@ -172,6 +175,84 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="showExcelReportDialog" title="Excel导入校验报告" width="980px">
+      <el-alert
+        :type="excelInvalidCount > 0 ? 'warning' : 'success'"
+        :title="`共 ${excelEditableRows.length} 行：通过 ${excelValidCount} 行，异常 ${excelInvalidCount} 行`"
+        show-icon
+        :closable="false"
+        style="margin-bottom: 10px"
+      />
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 8px; gap: 8px">
+        <el-button size="small" @click="handleAddExcelRow">新增一行</el-button>
+        <el-button size="small" @click="handleRevalidateExcelRows">重新校验</el-button>
+        <el-button size="small" @click="handleSelectAllValidRows">全选可导入行</el-button>
+        <el-button size="small" @click="handleToggleSelectValidRows">反选可导入行</el-button>
+        <el-button size="small" :disabled="excelInvalidCount === 0" @click="handleExportErrorCsv">导出错误清单CSV</el-button>
+      </div>
+      <el-table
+        ref="excelReportTableRef"
+        :data="excelEditableRows"
+        stripe
+        max-height="420"
+        :row-class-name="excelReportRowClassName"
+        @selection-change="handleExcelSelectionChange"
+      >
+        <el-table-column type="selection" width="50" :selectable="excelRowSelectable" />
+        <el-table-column prop="rowNo" label="行号" width="70" />
+        <el-table-column prop="materialName" label="物资名称" min-width="150">
+          <template #default="{ row }">
+            <el-input v-model="row.materialName" size="small" :class="{ 'excel-cell-error': excelCellHasIssue(row, '物资名称') }" @change="handleExcelRowChange(row)" />
+          </template>
+        </el-table-column>
+        <el-table-column prop="specModel" label="规格型号" min-width="120">
+          <template #default="{ row }">
+            <el-input v-model="row.specModel" size="small" @change="handleExcelRowChange(row)" />
+          </template>
+        </el-table-column>
+        <el-table-column prop="brand" label="品牌" min-width="100">
+          <template #default="{ row }">
+            <el-input v-model="row.brand" size="small" @change="handleExcelRowChange(row)" />
+          </template>
+        </el-table-column>
+        <el-table-column prop="unit" label="单位" width="90">
+          <template #default="{ row }">
+            <el-input v-model="row.unit" size="small" @change="handleExcelRowChange(row)" />
+          </template>
+        </el-table-column>
+        <el-table-column prop="rawQuantity" label="数量" width="120">
+          <template #default="{ row }">
+            <el-input v-model="row.rawQuantity" size="small" :class="{ 'excel-cell-error': excelCellHasIssue(row, '数量') }" @change="handleExcelRowChange(row)" />
+          </template>
+        </el-table-column>
+        <el-table-column prop="rawBudgetPrice" label="预算单价" width="120">
+          <template #default="{ row }">
+            <el-input v-model="row.rawBudgetPrice" size="small" :class="{ 'excel-cell-error': excelCellHasIssue(row, '预算单价') }" @change="handleExcelRowChange(row)" />
+          </template>
+        </el-table-column>
+        <el-table-column label="校验结果" min-width="200">
+          <template #default="{ row }">
+            <el-tag v-if="row.valid" type="success" size="small">通过</el-tag>
+            <el-tag v-else type="danger" size="small">{{ (row.issues || []).join('；') }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="80">
+          <template #default="{ $index }">
+            <el-button type="danger" link @click="handleRemoveExcelRow($index)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="showExcelReportDialog = false">取消</el-button>
+        <el-button type="primary" :disabled="!excelSelectedValidRows.length" @click="handleImportSelectedExcelRows">
+          导入选中行（{{ excelSelectedValidRows.length }}）
+        </el-button>
+        <el-button type="primary" plain :disabled="!excelValidRows.length" @click="handleImportExcelValidRows">
+          导入全部通过行（{{ excelValidRows.length }}）
+        </el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="showCompareDialog" title="自动比价分析" width="800px">
       <div class="compare-header">
         <span>物资：{{ compareItem?.materialName }}</span>
@@ -214,8 +295,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { formatAmount } from '../../../utils/format'
-import api from '../../api'
+import { api } from '@/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -234,6 +314,16 @@ const showImportDialog = ref(false)
 const importing = ref(false)
 const batchText = ref('')
 const importItems = ref<any[]>([])
+const excelImportRef = ref<HTMLInputElement>()
+const showExcelReportDialog = ref(false)
+const excelReportRows = ref<any[]>([])
+const excelEditableRows = ref<any[]>([])
+const excelReportTableRef = ref()
+const excelValidRows = ref<any[]>([])
+const excelSelectedRows = ref<any[]>([])
+const excelSelectedValidRows = computed(() => excelSelectedRows.value.filter((x: any) => !!x?.valid).map((x: any) => normalizeItem(x)))
+const excelValidCount = ref(0)
+const excelInvalidCount = ref(0)
 const validationErrors = ref<any[]>([])
 const showCompareDialog = ref(false)
 const compareItem = ref<any>(null)
@@ -279,6 +369,172 @@ const handleContractChange = () => {}
 const addItem = () => itemList.value.push({ materialName: '', specModel: '', brand: '', unit: '', quantity: 0, budgetPrice: 0, matchStatus: '' })
 const removeItem = (idx: number) => itemList.value.splice(idx, 1)
 const handleReverseOrder = () => itemList.value.reverse()
+const normalizeItem = (row: any) => ({
+  materialName: row?.materialName || '',
+  specModel: row?.specModel || '',
+  brand: row?.brand || '',
+  unit: row?.unit || '',
+  quantity: Number(row?.quantity ?? row?.planQuantity ?? 0),
+  budgetPrice: Number(row?.budgetPrice ?? 0),
+  remark: row?.remark || '',
+  matchStatus: row?.matchStatus || ''
+})
+
+const excelReportRowClassName = ({ row }: any) => (row?.valid ? '' : 'excel-report-row-error')
+const excelRowSelectable = (row: any) => !!row?.valid
+const excelCellHasIssue = (row: any, field: string) => {
+  const issues = Array.isArray(row?.issues) ? row.issues : []
+  if (!issues.length) return false
+  if (field === '物资名称') return issues.some((x: string) => x.includes('物资名称'))
+  if (field === '数量') return issues.some((x: string) => x.includes('数量'))
+  if (field === '预算单价') return issues.some((x: string) => x.includes('预算单价') || x.includes('单价'))
+  return false
+}
+
+const parseDecimalStrict = (raw: any): number | null => {
+  const txt = String(raw ?? '').trim()
+  if (!txt) return null
+  if (!/^-?\d+(\.\d+)?$/.test(txt)) return null
+  const n = Number(txt)
+  if (Number.isNaN(n)) return null
+  return n
+}
+
+const validateExcelRow = (row: any, idx: number) => {
+  const issues: string[] = []
+  const materialName = String(row.materialName || '').trim()
+  const q = parseDecimalStrict(row.rawQuantity)
+  const p = parseDecimalStrict(row.rawBudgetPrice)
+  if (!materialName) issues.push('物资名称不能为空')
+  if (q == null) issues.push('数量格式错误')
+  else if (q <= 0) issues.push('数量必须大于0')
+  if (String(row.rawBudgetPrice || '').trim() && p == null) issues.push('预算单价格式错误')
+  else if (p != null && p < 0) issues.push('预算单价不能为负数')
+  row.rowNo = idx + 1
+  row.issues = issues
+  row.valid = issues.length === 0
+  row.quantity = q ?? 0
+  row.budgetPrice = p ?? 0
+}
+
+const rebuildExcelValidationResult = () => {
+  const selectedKeys = new Set(
+    excelSelectedRows.value.map((r: any) => `${String(r?.rowNo)}|${String(r?.materialName || '')}|${String(r?.rawQuantity || '')}|${String(r?.rawBudgetPrice || '')}`)
+  )
+  excelEditableRows.value.forEach((row, idx) => validateExcelRow(row, idx))
+  excelReportRows.value = excelEditableRows.value
+  excelValidRows.value = excelEditableRows.value.filter((r: any) => r.valid).map((r: any) => normalizeItem(r))
+  excelValidCount.value = excelValidRows.value.length
+  excelInvalidCount.value = excelEditableRows.value.length - excelValidCount.value
+  excelSelectedRows.value = excelEditableRows.value.filter((r: any) =>
+    r.valid && selectedKeys.has(`${String(r?.rowNo)}|${String(r?.materialName || '')}|${String(r?.rawQuantity || '')}|${String(r?.rawBudgetPrice || '')}`)
+  )
+  // re-apply table selection after data refresh
+  setTimeout(() => {
+    if (!excelReportTableRef.value) return
+    excelReportTableRef.value.clearSelection()
+    for (const row of excelSelectedRows.value) {
+      excelReportTableRef.value.toggleRowSelection(row, true)
+    }
+  }, 0)
+}
+
+const handleExcelRowChange = () => {
+  rebuildExcelValidationResult()
+}
+
+const handleAddExcelRow = () => {
+  excelEditableRows.value.push({
+    rowNo: excelEditableRows.value.length + 1,
+    materialName: '',
+    specModel: '',
+    brand: '',
+    unit: '',
+    rawQuantity: '',
+    rawBudgetPrice: '',
+    quantity: 0,
+    budgetPrice: 0,
+    valid: false,
+    issues: ['物资名称不能为空', '数量格式错误']
+  })
+  rebuildExcelValidationResult()
+}
+
+const handleRemoveExcelRow = (idx: number) => {
+  excelEditableRows.value.splice(idx, 1)
+  rebuildExcelValidationResult()
+}
+
+const handleRevalidateExcelRows = () => {
+  rebuildExcelValidationResult()
+  if (excelInvalidCount.value > 0) {
+    ElMessage.warning(`仍有 ${excelInvalidCount.value} 行异常，请修正后再保存`)
+    return
+  }
+  ElMessage.success('校验通过')
+}
+
+const handleExcelSelectionChange = (rows: any[]) => {
+  excelSelectedRows.value = rows || []
+}
+
+const handleSelectAllValidRows = () => {
+  if (!excelReportTableRef.value) return
+  excelReportTableRef.value.clearSelection()
+  for (const row of excelEditableRows.value) {
+    if (row?.valid) excelReportTableRef.value.toggleRowSelection(row, true)
+  }
+}
+
+const handleToggleSelectValidRows = () => {
+  if (!excelReportTableRef.value) return
+  const selectedSet = new Set(excelSelectedRows.value)
+  for (const row of excelEditableRows.value) {
+    if (!row?.valid) continue
+    excelReportTableRef.value.toggleRowSelection(row, !selectedSet.has(row))
+  }
+}
+
+const escapeCsvCell = (value: any) => {
+  const s = String(value ?? '')
+  if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+    return `"${s.replace(/"/g, '""')}"`
+  }
+  return s
+}
+
+const handleExportErrorCsv = () => {
+  const invalidRows = excelEditableRows.value.filter((r: any) => !r?.valid)
+  if (!invalidRows.length) {
+    ElMessage.info('当前没有异常行可导出')
+    return
+  }
+  const header = ['行号', '物资名称', '规格型号', '品牌', '单位', '原始数量', '原始预算单价', '错误原因']
+  const lines = [header.map(escapeCsvCell).join(',')]
+  for (const row of invalidRows) {
+    lines.push([
+      row.rowNo,
+      row.materialName,
+      row.specModel,
+      row.brand,
+      row.unit,
+      row.rawQuantity,
+      row.rawBudgetPrice,
+      Array.isArray(row.issues) ? row.issues.join('；') : ''
+    ].map(escapeCsvCell).join(','))
+  }
+  const csv = '\uFEFF' + lines.join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const href = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = href
+  a.download = `purchase-import-errors-${Date.now()}.csv`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(href)
+  ElMessage.success(`已导出 ${invalidRows.length} 条异常记录`)
+}
 
 const handleBatchImport = () => {
   if (!batchText.value) return
@@ -304,9 +560,103 @@ const handleImportContract = async () => {
 }
 
 const handleImportConfirm = () => {
-  itemList.value.push(...importItems.value)
+  itemList.value.push(...importItems.value.map((x: any) => normalizeItem(x)))
   showImportDialog.value = false
   ElMessage.success('导入成功')
+}
+
+const triggerExcelImport = () => {
+  if (!canEdit.value) return
+  excelImportRef.value?.click()
+}
+
+const downloadExcelTemplate = async () => {
+  try {
+    const url = api.purchase.importTemplateQuery()
+    const token = (localStorage.getItem('token') || '').trim().replace(/^"+|"+$/g, '').replace(/^Bearer\s+/i, '')
+    const res = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined
+    })
+    if (!res.ok) throw new Error('下载失败')
+    const blob = await res.blob()
+    const href = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = href
+    a.download = 'purchase-import-template.csv'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(href)
+  } catch (err: any) {
+    ElMessage.error(err?.message || '模板下载失败')
+  }
+}
+
+const handleExcelImport = async (e: Event) => {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  try {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res: any = await api.purchase.importExcel(fd)
+    if (res.code !== 200) {
+      ElMessage.error(res.message || 'Excel导入失败')
+      return
+    }
+    const rows = (res.data?.rows || []).map((x: any) => normalizeItem(x))
+    const reportRows = (res.data?.reportRows || []).map((x: any) => ({
+      ...x,
+      issues: Array.isArray(x?.issues) ? x.issues : []
+    }))
+    excelEditableRows.value = reportRows
+    excelSelectedRows.value = []
+    rebuildExcelValidationResult()
+    if (!rows.length) {
+      showExcelReportDialog.value = reportRows.length > 0
+      ElMessage.warning('没有可导入的有效行，请根据校验报告修正后重试')
+      return
+    }
+    if (excelInvalidCount.value > 0) {
+      showExcelReportDialog.value = true
+      ElMessage.warning(`检测到 ${excelInvalidCount.value} 行异常，请先查看校验报告`)
+      return
+    }
+    itemList.value.push(...rows)
+    ElMessage.success(`Excel导入成功，新增 ${rows.length} 条物资`)
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.message || err?.message || 'Excel导入失败')
+  } finally {
+    target.value = ''
+  }
+}
+
+const handleImportExcelValidRows = () => {
+  rebuildExcelValidationResult()
+  if (excelInvalidCount.value > 0) {
+    ElMessage.warning(`存在 ${excelInvalidCount.value} 行异常，请修正后再保存导入`)
+    return
+  }
+  if (!excelValidRows.value.length) {
+    ElMessage.warning('没有可导入的有效行')
+    return
+  }
+  itemList.value.push(...excelValidRows.value.map((x: any) => normalizeItem(x)))
+  showExcelReportDialog.value = false
+  excelSelectedRows.value = []
+  ElMessage.success(`已导入 ${excelValidRows.value.length} 条通过校验的数据`)
+}
+
+const handleImportSelectedExcelRows = () => {
+  rebuildExcelValidationResult()
+  if (!excelSelectedValidRows.value.length) {
+    ElMessage.warning('请先勾选通过校验的行')
+    return
+  }
+  itemList.value.push(...excelSelectedValidRows.value.map((x: any) => normalizeItem(x)))
+  showExcelReportDialog.value = false
+  excelSelectedRows.value = []
+  ElMessage.success(`已导入 ${excelSelectedValidRows.value.length} 条选中数据`)
 }
 
 const openCompareDialog = (row: any) => {
@@ -322,7 +672,11 @@ const handleSaveDraft = async () => {
   if (!form.projectId || !form.contractId) { ElMessage.warning('请选择项目和合同'); return }
   try {
     const data = { ...form, status: 1, items: itemList.value }
-    if (isEdit.value) { await api.gantt.update(data) } else { await api.gantt.create(data) }
+    if (isEdit.value) {
+      await api.purchase.update(data)
+    } else {
+      await api.purchase.create(data)
+    }
     ElMessage.success('保存草稿成功')
     router.back()
   } catch (e: any) { ElMessage.error(e.message) }
@@ -331,12 +685,34 @@ const handleSaveDraft = async () => {
 const handleSubmit = async () => {
   if (!validate()) { ElMessage.warning('请修正校验错误'); return }
   try {
+    if (isEdit.value && form.id) {
+      await api.purchase.update({ ...form, status: 2, items: itemList.value })
+      await api.purchase.submit(form.id)
+    } else {
+      const createRes: any = await api.purchase.create({ ...form, status: 2, items: itemList.value })
+      const newId = Number(createRes?.data?.id)
+      if (Number.isFinite(newId) && newId > 0) {
+        await api.purchase.submit(newId)
+      }
+    }
     ElMessage.success('提交成功')
     router.back()
   } catch (e: any) { ElMessage.error(e.message) }
 }
 
-onMounted(() => { if (id.value) console.log('获取详情') })
+onMounted(async () => {
+  if (!id.value) return
+  try {
+    const res: any = await api.purchase.get(id.value)
+    if (res.code === 200 && res.data) {
+      Object.assign(form, res.data)
+      form.id = id.value
+      itemList.value = (res.data.items || []).map((x: any) => normalizeItem(x))
+    }
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载采购清单失败')
+  }
+})
 </script>
 
 <style scoped>
@@ -356,4 +732,10 @@ onMounted(() => { if (id.value) console.log('获取详情') })
 .validation-card .validation-item.warning { color: #e6a23c; }
 .validation-card .validation-item.info { color: #909399; }
 .import-result { padding: 10px 0; }
+:deep(.excel-report-row-error) {
+  --el-table-tr-bg-color: #fff2f0;
+}
+:deep(.excel-cell-error .el-input__wrapper) {
+  box-shadow: 0 0 0 1px #f56c6c inset !important;
+}
 </style>

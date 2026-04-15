@@ -24,18 +24,18 @@
         <el-form-item label="状态">
           <el-select v-model="filterForm.status" placeholder="请选择" clearable style="width: 120px">
             <el-option label="正常" :value="1" />
-            <el-option label="禁用" :value="2" />
+            <el-option label="禁用" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="loadData">搜索</el-button>
+          <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <el-card class="table-card">
-      <el-table :data="tableData" stripe>
+      <el-table v-loading="tableLoading" :data="tableData" stripe>
         <el-table-column prop="username" label="用户名" width="120" />
         <el-table-column prop="realName" label="真实姓名" width="100" />
         <el-table-column prop="phone" label="手机号" width="130" />
@@ -44,7 +44,7 @@
         <el-table-column prop="position" label="职位" width="100" />
         <el-table-column prop="status" label="状态" width="80" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '正常' : '禁用' }}</el-tag>
+            <el-tag :type="Number(row.status) === 1 ? 'success' : 'danger'">{{ Number(row.status) === 1 ? '正常' : '禁用' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="lastLoginTime" label="最后登录" width="160" />
@@ -57,7 +57,15 @@
         </el-table-column>
       </el-table>
       <div class="pagination">
-        <el-pagination v-model:current-page="pagination.page" v-model:page-size="pagination.size" :total="pagination.total" layout="total, sizes, prev, pager, next, jumper" />
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.size"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handlePageChange"
+        />
       </div>
     </el-card>
 
@@ -79,18 +87,44 @@
           <el-input v-model="form.email" placeholder="请输入邮箱" />
         </el-form-item>
         <el-form-item label="部门">
-          <el-input v-model="form.departmentName" placeholder="请输入部门" />
+          <el-cascader
+            v-model="form.deptId"
+            :options="deptTree"
+            :props="{ checkStrictly: true, value: 'id', label: 'deptName', emitPath: false }"
+            placeholder="请选择部门"
+            clearable
+            style="width: 100%"
+          />
         </el-form-item>
         <el-form-item label="职位">
           <el-input v-model="form.position" placeholder="请输入职位" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-switch v-model="form.status" :active-value="1" :inactive-value="2" />
+          <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="roleDialogVisible" title="分配角色" width="500px">
+      <el-form label-width="80px">
+        <el-form-item label="用户">
+          <span>{{ currentUser?.realName }}</span>
+        </el-form-item>
+        <el-form-item label="角色">
+          <el-checkbox-group v-model="selectedRoles">
+            <el-checkbox v-for="role in roleList" :key="role.id" :label="role.id">
+              {{ role.roleName }}
+            </el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="roleDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleRoleSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -104,25 +138,47 @@ import { request } from '@/utils/request'
 const filterForm = reactive({ username: '', realName: '', status: null as number | null })
 const tableData = ref<any[]>([])
 const pagination = reactive({ page: 1, size: 20, total: 0 })
+const submitLoading = ref(false)
+const tableLoading = ref(false)
 
 const loadData = async () => {
+  tableLoading.value = true
   try {
-    const res = await request<{ data: any[] }>({ url: '/api/system/user/list', method: 'GET' })
-    tableData.value = res.data || []
-    pagination.total = res.data?.length || 0
-  } catch (e) {
-    tableData.value = [
-      { id: 1, username: 'admin', realName: '管理员', phone: '13800138000', email: 'admin@mochu.com', departmentName: '技术部', position: '经理', status: 1, lastLoginTime: '2026-04-14 10:30:00' },
-      { id: 2, username: 'zhangsan', realName: '张三', phone: '13800138001', email: 'zhangsan@mochu.com', departmentName: '销售部', position: '销售', status: 1, lastLoginTime: '2026-04-13 15:20:00' },
-      { id: 3, username: 'lisi', realName: '李四', phone: '13800138002', email: 'lisi@mochu.com', departmentName: '财务部', position: '会计', status: 1, lastLoginTime: '2026-04-12 09:10:00' }
-    ]
-    pagination.total = 3
+    const res: any = await request({
+      url: '/system/user/list',
+      method: 'GET',
+      params: {
+        username: filterForm.username || undefined,
+        realName: filterForm.realName || undefined,
+        status: filterForm.status ?? undefined,
+        page: pagination.page,
+        size: pagination.size
+      }
+    })
+    const pageData = res.data
+    tableData.value = pageData?.list || []
+    pagination.total = Number(pageData?.total) || 0
+  } catch {
+    tableData.value = []
+    pagination.total = 0
+  } finally {
+    tableLoading.value = false
   }
 }
 
-onMounted(() => {
+const handleSearch = () => {
+  pagination.page = 1
   loadData()
-})
+}
+
+const handleSizeChange = () => {
+  pagination.page = 1
+  loadData()
+}
+
+const handlePageChange = () => {
+  loadData()
+}
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -134,17 +190,55 @@ const form = reactive({
   realName: '',
   phone: '',
   email: '',
+  deptId: null as number | null,
   departmentName: '',
   position: '',
   status: 1
 })
+
+const deptTree = ref<any[]>([])
+const roleList = ref<any[]>([])
+const roleDialogVisible = ref(false)
+const currentUser = ref<any>(null)
+const selectedRoles = ref<number[]>([])
+
+const loadDeptTree = async () => {
+  try {
+    const res = await request<{ data: any[] }>({ url: '/system/department/tree', method: 'GET' })
+    deptTree.value = res.data || []
+  } catch (e) {
+    deptTree.value = [{ id: 1, deptName: '总公司', children: [] }]
+  }
+}
+
+const loadRoleList = async () => {
+  try {
+    const res = await request<{ data: any[] }>({ url: '/system/role/select-list', method: 'GET' })
+    roleList.value = res.data || []
+  } catch {
+    roleList.value = []
+  }
+}
+
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur', message: '密码不能为空' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   realName: [{ required: true, message: '请输入真实姓名', trigger: 'blur' }]
 }
 
-const handleReset = () => { filterForm.username = ''; filterForm.realName = ''; filterForm.status = null }
+onMounted(() => {
+  loadData()
+  loadDeptTree()
+  loadRoleList()
+})
+
+const handleReset = () => {
+  filterForm.username = ''
+  filterForm.realName = ''
+  filterForm.status = null
+  pagination.page = 1
+  loadData()
+}
 const handleCreate = () => {
   dialogTitle.value = '新增用户'
   form.id = null
@@ -153,6 +247,7 @@ const handleCreate = () => {
   form.realName = ''
   form.phone = ''
   form.email = ''
+  form.deptId = null
   form.departmentName = ''
   form.position = ''
   form.status = 1
@@ -161,35 +256,93 @@ const handleCreate = () => {
 const handleEdit = (row: any) => {
   dialogTitle.value = '编辑用户'
   Object.assign(form, row)
+  form.deptId = row.departmentId ?? row.deptId ?? null
   form.password = ''
   dialogVisible.value = true
 }
-const handleRole = (row: any) => {
-  ElMessage.info(`为 ${row.realName} 分配角色功能开发中`)
-}
-const handleSubmit = async () => {
+const handleRole = async (row: any) => {
+  currentUser.value = row
+  selectedRoles.value = row.roleIds || []
   try {
+    const res: any = await request({ url: `/system/user/${row.id}`, method: 'GET' })
+    const roleIds = res?.data?.roleIds
+    if (Array.isArray(roleIds)) {
+      selectedRoles.value = roleIds.map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id))
+    }
+  } catch {
+    // 详情接口未返回角色时沿用列表数据
+  }
+  roleDialogVisible.value = true
+}
+
+const handleRoleSubmit = async () => {
+  try {
+    await request({
+      url: `/system/user/${currentUser.value.id}/roles`,
+      method: 'PUT',
+      data: selectedRoles.value
+    })
+    ElMessage.success('角色分配成功')
+    roleDialogVisible.value = false
+    loadData()
+  } catch (e: any) {
+    ElMessage.error(e?.message || '角色分配失败')
+  }
+}
+
+const buildUserPayload = () => {
+  const payload: Record<string, unknown> = {
+    username: form.username,
+    realName: form.realName,
+    phone: form.phone || null,
+    email: form.email || null,
+    departmentId: form.deptId ?? null,
+    departmentName: form.departmentName || null,
+    position: form.position || null,
+    status: form.status
+  }
+  if (form.id) {
+    payload.id = form.id
+    if (form.password) payload.password = form.password
+  } else {
+    payload.password = form.password
+  }
+  return payload
+}
+
+const handleSubmit = async () => {
+  if (!formRef.value) return
+  try {
+    await formRef.value.validate()
+  } catch {
+    return
+  }
+  submitLoading.value = true
+  try {
+    const data = buildUserPayload()
     if (form.id) {
-      await request({ url: '/api/system/user', method: 'PUT', data: form })
+      await request({ url: '/system/user', method: 'PUT', data })
     } else {
-      await request({ url: '/api/system/user', method: 'POST', data: form })
+      await request({ url: '/system/user', method: 'POST', data })
     }
     ElMessage.success('保存成功')
-  } catch (e) {
-    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    loadData()
+  } catch (e: any) {
+    ElMessage.error(e?.message || '保存失败')
+  } finally {
+    submitLoading.value = false
   }
-  dialogVisible.value = false
-  loadData()
 }
 const handleDelete = (row: any) => {
   ElMessageBox.confirm('确定要删除该用户吗？', '提示', { type: 'warning' }).then(async () => {
     try {
-      await request({ url: `/api/system/user/${row.id}`, method: 'DELETE' })
+      await request({ url: `/system/user/${row.id}`, method: 'DELETE' })
       ElMessage.success('删除成功')
-    } catch (e) {
-      ElMessage.success('删除成功')
+      loadData()
+    } catch (e: any) {
+      ElMessage.error(e?.message || '删除失败')
     }
-    loadData()
   })
 }
 </script>

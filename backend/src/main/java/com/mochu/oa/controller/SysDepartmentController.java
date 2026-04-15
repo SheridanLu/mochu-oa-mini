@@ -28,8 +28,7 @@ public class SysDepartmentController {
     @GetMapping("/tree")
     @Operation(summary = "获取部门树")
     public Result<List<SysDepartment>> tree() {
-        List<SysDepartment> list = sysDepartmentService.list();
-        return Result.success(list);
+        return Result.success(sysDepartmentService.buildDeptTree());
     }
     
     @GetMapping("/{id}")

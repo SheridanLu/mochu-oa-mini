@@ -57,7 +57,7 @@
             <el-icon><Tools /></el-icon>
             <span>施工管理</span>
           </template>
-          <el-menu-item index="/construction">甘特图</el-menu-item>
+          <el-menu-item index="/construction/gantt">甘特图</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="/finance">
           <template #title>
@@ -67,8 +67,10 @@
           <el-menu-item index="/finance/reconciliation">收入对账</el-menu-item>
           <el-menu-item index="/finance/supervision">回款督办</el-menu-item>
           <el-menu-item index="/finance/payment-plan">付款计划</el-menu-item>
+          <el-menu-item index="/finance/payment-apply">付款申请</el-menu-item>
           <el-menu-item index="/finance/expense">日常报销</el-menu-item>
           <el-menu-item index="/finance/invoice">发票管理</el-menu-item>
+          <el-menu-item index="/finance/budget">部门预算</el-menu-item>
           <el-menu-item index="/finance/cost">成本归集</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="/report">
@@ -84,6 +86,7 @@
             <span>审批中心</span>
           </template>
           <el-menu-item index="/approval">我的审批</el-menu-item>
+          <el-menu-item index="/approval/flow">流程管理</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="/system">
           <template #title>
@@ -94,7 +97,7 @@
           <el-menu-item index="/system/company">公司信息</el-menu-item>
           <el-menu-item index="/system/user">用户管理</el-menu-item>
           <el-menu-item index="/system/role">角色管理</el-menu-item>
-          <el-menu-item index="/system/permission">权限配置</el-menu-item>
+          <el-menu-item index="/system/dept">部门管理</el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>
@@ -112,18 +115,19 @@
           </el-breadcrumb>
         </div>
         <div class="header-right">
-          <el-badge :value="5" class="badge">
+          <el-badge :value="todoBadge" :hidden="todoBadge === 0" :max="99" class="badge" @click="goApproval">
             <el-icon><Bell /></el-icon>
           </el-badge>
           <el-dropdown @command="handleCommand">
             <div class="user-info">
               <el-icon><User /></el-icon>
-              <span>管理员</span>
+              <span>{{ displayName }}</span>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">个人中心</el-dropdown-item>
                 <el-dropdown-item command="settings">系统设置</el-dropdown-item>
+                <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
                 <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -135,14 +139,44 @@
       </el-main>
     </el-container>
   </el-container>
+
+  <el-dialog
+    v-model="passwordDialogVisible"
+    title="修改登录密码"
+    width="480px"
+    destroy-on-close
+    :close-on-click-modal="!mustForceChangePassword"
+    :close-on-press-escape="!mustForceChangePassword"
+    :show-close="!mustForceChangePassword"
+  >
+    <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-width="110px">
+      <el-form-item label="旧密码" prop="oldPassword">
+        <el-input v-model="passwordForm.oldPassword" type="password" show-password placeholder="请输入旧密码" />
+      </el-form-item>
+      <el-form-item label="新密码" prop="newPassword">
+        <el-input v-model="passwordForm.newPassword" type="password" show-password placeholder="请输入新密码" />
+      </el-form-item>
+      <el-form-item label="确认新密码" prop="confirmPassword">
+        <el-input v-model="passwordForm.confirmPassword" type="password" show-password placeholder="请再次输入新密码" />
+      </el-form-item>
+      <div class="pwd-tip">密码要求：8-20位，且必须包含大写字母、小写字母、数字和特殊字符。</div>
+    </el-form>
+    <template #footer>
+      <el-button v-if="!mustForceChangePassword" @click="passwordDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="passwordSubmitting" @click="handleChangePassword">确认修改</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useMenuStore } from '@/stores/menu'
-import axios from 'axios'
+import { api } from '@/api'
+import { pushRecentVisit } from '@/utils/recentVisits'
 
 const route = useRoute()
 const router = useRouter()
@@ -150,8 +184,77 @@ const userStore = useUserStore()
 const menuStore = useMenuStore()
 
 const isCollapse = ref(false)
+const todoBadge = ref(0)
+const passwordDialogVisible = ref(false)
+const passwordSubmitting = ref(false)
+const passwordFormRef = ref<FormInstance>()
+const passwordForm = ref({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[~!@#$%^&*()_+\-={}\[\]|:;"'<>,.?/]).{8,20}$/
+const passwordRules: FormRules = {
+  oldPassword: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (!passwordPattern.test(value || '')) {
+          callback(new Error('密码必须8-20位，且包含大小写字母、数字和特殊字符'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认新密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (value !== passwordForm.value.newPassword) {
+          callback(new Error('两次输入的新密码不一致'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ]
+}
 const activeMenu = computed(() => route.path)
 const currentRoute = computed(() => route.meta.title as string)
+const mustForceChangePassword = computed(() => !!userStore.userInfo?.mustChangePassword)
+const displayName = computed(() => {
+  const realName = userStore.userInfo?.realName || ''
+  const username = userStore.userInfo?.username || ''
+  // realName 出现替换字符时，优先展示 username，避免界面显示乱码
+  if (realName.includes('�')) return username || '未登录'
+  return realName || username || '未登录'
+})
+
+let todoPollTimer: ReturnType<typeof setInterval> | null = null
+
+const refreshTodoBadge = async () => {
+  const uid = userStore.userInfo?.id
+  if (!uid) {
+    todoBadge.value = 0
+    return
+  }
+  try {
+    const res: any = await api.todo.count({ userId: uid })
+    if (res.code === 200) {
+      todoBadge.value = Number(res.data?.todoCount) || 0
+    }
+  } catch {
+    /* 忽略角标拉取失败 */
+  }
+}
+
+const goApproval = () => {
+  router.push('/approval')
+}
 
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
@@ -162,15 +265,44 @@ const handleCommand = (command: string) => {
     userStore.logout()
     menuStore.clearMenus()
     router.push('/login')
+  } else if (command === 'settings') {
+    router.push('/system/announcement')
+  } else if (command === 'profile') {
+    router.push('/home')
+  } else if (command === 'changePassword') {
+    passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
+    passwordDialogVisible.value = true
+  }
+}
+
+const handleChangePassword = async () => {
+  const valid = await passwordFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  passwordSubmitting.value = true
+  try {
+    await api.auth.changePassword({
+      oldPassword: passwordForm.value.oldPassword,
+      newPassword: passwordForm.value.newPassword,
+      confirmPassword: passwordForm.value.confirmPassword
+    })
+    ElMessage.success('密码修改成功，请重新登录')
+    passwordDialogVisible.value = false
+    userStore.logout()
+    menuStore.clearMenus()
+    router.replace('/login')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '修改密码失败')
+  } finally {
+    passwordSubmitting.value = false
   }
 }
 
 const loadMenus = async () => {
   if (!menuStore.isLoaded) {
     try {
-      const res = await axios.get('/api/system/menu/tree')
-      if (res.data.code === 200) {
-        menuStore.setMenus(res.data.data || [])
+      const res: any = await api.system.menu.tree()
+      if (res.code === 200) {
+        menuStore.setMenus(res.data || [])
       }
     } catch (e) {
       console.error('加载菜单失败', e)
@@ -178,8 +310,53 @@ const loadMenus = async () => {
   }
 }
 
+const ensureUserInfo = async () => {
+  if (!userStore.token) return
+  try {
+    const res: any = await api.auth.getUserInfo()
+    if (res.code === 200 && res.data) {
+      userStore.setUserInfo({
+        id: Number(res.data.userId) || 0,
+        username: res.data.username || '',
+        realName: res.data.realName || '',
+        avatar: res.data.avatar || '',
+        department: res.data.departmentName || '',
+        roles: [],
+        mustChangePassword: userStore.userInfo?.mustChangePassword || false
+      })
+      if (userStore.userInfo?.mustChangePassword) {
+        passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
+        passwordDialogVisible.value = true
+      }
+      return
+    }
+  } catch {
+    // token 无效时统一走登出回登录
+  }
+  userStore.logout()
+  menuStore.clearMenus()
+  router.replace('/login')
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    const title = (route.meta?.title as string) || ''
+    pushRecentVisit(route.path, title)
+  },
+  { immediate: true }
+)
+
 onMounted(() => {
-  loadMenus()
+  void ensureUserInfo().then(() => {
+    loadMenus()
+    void refreshTodoBadge()
+  })
+  todoPollTimer = setInterval(() => void refreshTodoBadge(), 120000)
+})
+
+onUnmounted(() => {
+  if (todoPollTimer) clearInterval(todoPollTimer)
 })
 </script>
 
@@ -254,5 +431,12 @@ onMounted(() => {
 .el-main {
   background: #f5f7fa;
   padding: 20px;
+}
+
+.pwd-tip {
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-left: 110px;
 }
 </style>

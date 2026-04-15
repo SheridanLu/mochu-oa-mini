@@ -257,9 +257,15 @@
           </el-form-item>
         </template>
         <el-form-item label="上传附件">
-          <el-upload action="/api/common/upload" :auto-upload="false" :file-list="progressForm.attachments" list-type="text">
-            <el-button type="primary">上传文件</el-button>
-          </el-upload>
+          <AttachmentUpload
+            :limit="30"
+            accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+            :allowed-exts="['.png', '.jpg', '.jpeg', '.webp', '.gif']"
+            @uploaded="handleProgressPhotoUploaded"
+          >
+            <el-button type="primary">上传现场照片</el-button>
+          </AttachmentUpload>
+          <div class="upload-tip">建议文件名包含“任务名 + 日期(YYYYMMDD)”用于水印识别校验。</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -275,7 +281,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { InfoFilled, WarningFilled } from '@element-plus/icons-vue'
-import api from '../../../api'
+import { api } from '@/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -318,7 +324,7 @@ const progressForm = reactive({
   hiddenWork: false,
   hiddenAcceptStatus: 'unaccepted',
   hiddenRectifyNote: '',
-  attachments: [] as any[]
+  attachments: [] as string[]
 })
 
 const getStatusType = (status: number) => ['', 'info', 'warning', 'success', 'primary'][status] || 'info'
@@ -341,23 +347,69 @@ const openProgressDialog = (task: any) => {
   progressForm.hiddenWork = task.hiddenWork || false
   progressForm.hiddenAcceptStatus = task.hiddenAcceptStatus || 'unaccepted'
   progressForm.hiddenRectifyNote = ''
-  progressForm.attachments = []
+  progressForm.attachments = Array.isArray(task.attachments) ? [...task.attachments] : []
   progressDialogVisible.value = true
 }
 
-const saveProgress = () => {
+const handleProgressPhotoUploaded = async (url: string, res: any) => {
+  if (res?.code !== 200 || !url) return
+  if (!progressForm.attachments.includes(url)) {
+    progressForm.attachments.push(url)
+  }
+  if (!progressForm.hiddenWork || !form.id || !form.projectId || !progressForm.taskId) return
+  try {
+    const task = taskList.value.find(t => t.id === progressForm.taskId)
+    const notifyRes: any = await api.gantt.notifyHiddenWorkPhotoUploaded({
+      ganttId: Number(form.id),
+      projectId: Number(form.projectId),
+      taskId: Number(progressForm.taskId),
+      taskName: progressForm.taskName,
+      photoUrl: url,
+      fallbackHandlerId: task?.handlerId ? Number(task.handlerId) : undefined
+    })
+    if (notifyRes?.code === 200 && notifyRes?.data?.created) {
+      ElMessage.success(`已自动通知资料员：${notifyRes?.data?.handlerName || '资料员'}`)
+    }
+  } catch (e: any) {
+    ElMessage.warning(e?.response?.data?.message || e?.message || '资料员待办通知失败')
+  }
+}
+
+const saveProgress = async () => {
   if (!progressForm.description) { ElMessage.warning('请填写进度描述'); return }
   if (progressForm.hiddenWork && progressForm.hiddenAcceptStatus === 'rejected' && !progressForm.hiddenRectifyNote) {
     ElMessage.warning('验收不合格时必填整改说明')
     return
   }
   const task = taskList.value.find(t => t.id === progressForm.taskId)
+  try {
+    const checkRes: any = await api.gantt.validateTaskPhotos({
+      ganttId: form.id || undefined,
+      taskId: progressForm.taskId || undefined,
+      handlerId: task?.handlerId || undefined,
+      taskName: progressForm.taskName,
+      progress: Number(progressForm.progress || 0),
+      photos: progressForm.attachments
+    })
+    if (checkRes?.code === 200 && checkRes?.data?.pass === false) {
+      ElMessage.warning(checkRes?.data?.message || '现场照片水印校验未通过')
+      return
+    }
+    if (checkRes?.code === 200 && checkRes?.data?.todoCreated) {
+      ElMessage.info('已自动生成现场照片补充待办提醒')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '照片校验失败')
+    return
+  }
+
   if (task) {
     task.progress = progressForm.progress
     task.progressDescription = progressForm.description
     task.actualStartDate = progressForm.actualStartDate
     task.actualEndDate = progressForm.actualEndDate
     task.hiddenAcceptStatus = progressForm.hiddenAcceptStatus
+    task.attachments = [...progressForm.attachments]
   }
   progressDialogVisible.value = false
   ElMessage.success('进度保存成功')
@@ -400,10 +452,18 @@ const handleSaveDraft = async () => {
 const handleSubmit = async () => {
   if (!validate()) { ElMessage.warning('请修正校验错误'); return }
   try {
-    const data = { ...form, milestones: milestoneList.value, tasks: taskList.value }
-    if (!isEdit.value) {
-      await api.gantt.create(data)
-      ElMessage.success('创建成功')
+    const data = { ...form, milestones: milestoneList.value, tasks: taskList.value, status: 2 }
+    if (isEdit.value && form.id) {
+      await api.gantt.update(data)
+      await api.gantt.submit(form.id)
+      ElMessage.success('提交审批成功')
+    } else {
+      const res: any = await api.gantt.create(data)
+      const newId = Number(res?.data?.id)
+      if (Number.isFinite(newId) && newId > 0) {
+        await api.gantt.submit(newId)
+      }
+      ElMessage.success('创建并提交成功')
     }
     router.back()
   } catch (e: any) { ElMessage.error(e.message) }
@@ -415,6 +475,7 @@ const fetchDetail = async () => {
     const res = await api.gantt.get(id.value)
     if (res.code === 200) {
       Object.assign(form, res.data)
+      form.id = id.value
       milestoneList.value = res.data.milestones || []
       taskList.value = res.data.tasks || []
     }
@@ -451,4 +512,5 @@ onMounted(() => { if (id.value) fetchDetail() })
 .task-bar-right { display: flex; align-items: center; gap: 4px; }
 .progress-text { font-size: 11px; color: #fff; }
 .progress-fill { position: absolute; left: 0; top: 0; height: 100%; background: rgba(46, 139, 87, 0.5); border-radius: 4px; }
+.upload-tip { margin-top: 8px; font-size: 12px; color: #909399; }
 </style>

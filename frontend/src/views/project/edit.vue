@@ -144,9 +144,9 @@
         </el-form-item>
 
         <el-form-item label="附件">
-          <el-upload action="/api/common/upload" list-type="file" :limit="5" :on-success="handleUploadSuccess">
+          <AttachmentUpload :limit="30" @uploaded="handleUploadSuccess">
             <el-button type="primary">上传附件</el-button>
-          </el-upload>
+          </AttachmentUpload>
         </el-form-item>
       </el-form>
     </el-card>
@@ -158,6 +158,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
+import { api } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -223,7 +224,7 @@ const regionOptions = [
 const loadData = async () => {
   if (query.id) {
     try {
-      const res = await request<{ data: any }>({ url: `/api/project/${query.id}`, method: 'GET' })
+      const res = await request<{ data: any }>({ url: `/project/${query.id}`, method: 'GET' })
       if (res.data) {
         Object.assign(form, res.data)
       }
@@ -248,9 +249,9 @@ const handleSubmit = async () => {
     form.city = form.location[1] || ''
     
     if (isEdit.value) {
-      await request({ url: '/api/project', method: 'PUT', data: form })
+      await api.project.update(form)
     } else {
-      await request({ url: '/api/project', method: 'POST', data: form })
+      await api.project.create(form)
     }
     ElMessage.success('保存成功')
     router.push('/project')
@@ -259,10 +260,8 @@ const handleSubmit = async () => {
   }
 }
 
-const handleUploadSuccess = (res: any) => {
-  if (res.code === 200) {
-    form.attachments.push(res.data)
-  }
+const handleUploadSuccess = (url: string, res: any) => {
+  if (res?.code === 200 && url) form.attachments.push(url)
 }
 </script>
 

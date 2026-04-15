@@ -43,6 +43,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '合同管理' }
       },
       {
+        path: '/contract/template',
+        name: 'ContractTemplate',
+        component: () => import('@/views/contract/template.vue'),
+        meta: { title: '合同模板管理' }
+      },
+      {
         path: '/contract/create',
         name: 'ContractCreate',
         component: () => import('@/views/contract/edit.vue'),
@@ -171,16 +177,34 @@ const routes: RouteRecordRaw[] = [
             meta: { title: '付款计划' }
           },
           {
+            path: 'payment-apply',
+            name: 'FinancePaymentApply',
+            component: () => import('@/views/finance/payment-apply/index.vue'),
+            meta: { title: '付款申请' }
+          },
+          {
             path: 'expense',
             name: 'FinanceExpense',
             component: () => import('@/views/finance/expense/index.vue'),
             meta: { title: '日常报销' }
           },
           {
+            path: 'expense/edit',
+            name: 'FinanceExpenseEdit',
+            component: () => import('@/views/finance/expense/edit.vue'),
+            meta: { title: '报销单编辑' }
+          },
+          {
             path: 'invoice',
             name: 'FinanceInvoice',
             component: () => import('@/views/finance/invoice/index.vue'),
             meta: { title: '发票管理' }
+          },
+          {
+            path: 'budget',
+            name: 'FinanceBudget',
+            component: () => import('@/views/finance/budget/index.vue'),
+            meta: { title: '部门预算' }
           },
           {
             path: 'cost',
@@ -197,10 +221,40 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '报表中心' }
       },
       {
+        path: '/report/project',
+        name: 'ReportProject',
+        component: () => import('@/views/report/project.vue'),
+        meta: { title: '项目进度报表' }
+      },
+      {
+        path: '/report/purchase',
+        name: 'ReportPurchase',
+        component: () => import('@/views/report/purchase.vue'),
+        meta: { title: '采购分析报表' }
+      },
+      {
+        path: '/report/finance',
+        name: 'ReportFinance',
+        component: () => import('@/views/report/finance.vue'),
+        meta: { title: '财务分析报表' }
+      },
+      {
+        path: '/report/custom',
+        name: 'ReportCustom',
+        component: () => import('@/views/report/custom.vue'),
+        meta: { title: '自定义报表' }
+      },
+      {
         path: '/approval',
         name: 'Approval',
         component: () => import('@/views/approval/index.vue'),
         meta: { title: '审批中心' }
+      },
+      {
+        path: '/approval/flow',
+        name: 'ApprovalFlow',
+        component: () => import('@/views/approval/flow.vue'),
+        meta: { title: '流程管理' }
       },
       {
         path: '/system',
@@ -237,6 +291,12 @@ const routes: RouteRecordRaw[] = [
             name: 'Permission',
             component: () => import('@/views/system/permission/index.vue'),
             meta: { title: '权限配置' }
+          },
+          {
+            path: 'dept',
+            name: 'Dept',
+            component: () => import('@/views/system/dept/index.vue'),
+            meta: { title: '部门管理' }
           }
         ]
       }
@@ -254,6 +314,10 @@ router.beforeEach((to, from, next) => {
   if (to.path !== '/login' && !token) {
     next('/login')
   } else if (to.path === '/login' && token) {
+    const userInfo = localStorage.getItem('userInfo')
+    // 仅在存在有效用户信息缓存时才跳过登录页，避免无效 token 直接进首页
+    next(userInfo ? '/home' : '/login')
+  } else if (!to.path || to.path === '/') {
     next('/home')
   } else {
     next()

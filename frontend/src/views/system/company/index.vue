@@ -124,7 +124,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import api from '../../../api'
+import { api } from '@/api'
 
 const loading = ref(false)
 const tableData = ref<any[]>([])
@@ -175,7 +175,7 @@ const fetchList = async () => {
       pagination.total = res.data?.total || 0
     }
   } catch (e: any) {
-    ElMessage.error(e.message || '获取列表失败')
+    ElMessage.error(e?.message || '获取列表失败')
   } finally {
     loading.value = false
   }
@@ -208,7 +208,7 @@ const handleEdit = async (row: any) => {
       formDialogVisible.value = true
     }
   } catch (e: any) {
-    ElMessage.error(e.message || '获取详情失败')
+    ElMessage.error(e?.message || '获取详情失败')
   }
 }
 
@@ -219,7 +219,11 @@ const handleView = (row: any) => {
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate()
+  try {
+    await formRef.value.validate()
+  } catch {
+    return
+  }
   submitLoading.value = true
   try {
     if (form.id > 0) {
@@ -231,14 +235,20 @@ const handleSubmit = async () => {
     formDialogVisible.value = false
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e.message || '保存失败')
+    ElMessage.error(e?.message || '保存失败')
   } finally {
     submitLoading.value = false
   }
 }
 
-const handleSizeChange = (size: number) => { pagination.size = size; fetchList() }
-const handleCurrentChange = (page: number) => { pagination.page = page; fetchList() }
+const handleSizeChange = () => {
+  pagination.page = 1
+  fetchList()
+}
+const handleCurrentChange = (page: number) => {
+  pagination.page = page
+  fetchList()
+}
 
 onMounted(() => { fetchList() })
 </script>

@@ -65,4 +65,13 @@ public class BizIncomeContract extends BaseEntity {
     
     @TableField("remark")
     private String remark;
+
+    @TableField(exist = false)
+    private Long templateId;
+
+    @TableField(exist = false)
+    private Integer templateVersion;
+
+    @TableField(exist = false)
+    private String templateContentHash;
 }

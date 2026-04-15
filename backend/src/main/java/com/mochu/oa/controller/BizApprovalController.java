@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -82,11 +83,20 @@ public class BizApprovalController {
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        List<Map<String, Object>> list = bizApprovalService.getTodoList(userId, category, bizType, keyword, page, size);
+        Map<String, Object> pageData = bizApprovalService.getTodoList(userId, category, bizType, keyword, page, size);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> list = (List<Map<String, Object>>) pageData.getOrDefault("list", List.of());
+        long total = pageData.get("total") instanceof Number n ? n.longValue() : 0L;
         long todoCount = bizApprovalService.getTodoCount(userId);
         long doneCount = bizApprovalService.getDoneCount(userId);
         long readCount = bizApprovalService.getReadCount(userId);
-        return Result.success(Map.of("list", list, "todoCount", todoCount, "doneCount", doneCount, "readCount", readCount));
+        Map<String, Object> body = new HashMap<>();
+        body.put("list", list);
+        body.put("total", total);
+        body.put("todoCount", todoCount);
+        body.put("doneCount", doneCount);
+        body.put("readCount", readCount);
+        return Result.success(body);
     }
     
     @GetMapping("/todo/count")
@@ -109,6 +119,19 @@ public class BizApprovalController {
     @Operation(summary = "获取流程定义")
     public Result<BizApprovalDef> getFlowDef(@PathVariable String bizType) {
         return Result.success(bizApprovalService.getFlowDef(bizType));
+    }
+
+    @GetMapping("/def/list")
+    @Operation(summary = "获取流程定义列表")
+    public Result<List<BizApprovalDef>> listFlowDefs() {
+        return Result.success(bizApprovalService.listFlowDefs());
+    }
+
+    @PostMapping("/def/save")
+    @Operation(summary = "保存流程定义")
+    public Result<Void> saveFlowDef(@RequestBody BizApprovalDef def) {
+        bizApprovalService.saveFlowDef(def);
+        return Result.success(null);
     }
     
     @PostMapping("/def/init")
