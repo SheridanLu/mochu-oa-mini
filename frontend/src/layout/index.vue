@@ -156,7 +156,13 @@ const isCollapse = ref(false)
 const todoBadge = ref(0)
 const activeMenu = computed(() => route.path)
 const currentRoute = computed(() => route.meta.title as string)
-const displayName = computed(() => userStore.userInfo?.realName || userStore.userInfo?.username || '未登录')
+const displayName = computed(() => {
+  const realName = userStore.userInfo?.realName || ''
+  const username = userStore.userInfo?.username || ''
+  // realName 出现替换字符时，优先展示 username，避免界面显示乱码
+  if (realName.includes('�')) return username || '未登录'
+  return realName || username || '未登录'
+})
 
 let todoPollTimer: ReturnType<typeof setInterval> | null = null
 

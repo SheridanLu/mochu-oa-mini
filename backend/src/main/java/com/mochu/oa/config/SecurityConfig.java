@@ -56,7 +56,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:8082", "http://localhost:8083", "http://127.0.0.1:3000", "http://127.0.0.1:8082", "http://127.0.0.1:8083", "http://43.160.215.90"));
+        // 使用 origin pattern 兼容不同端口/协议（尤其是 POST/PUT 的预检请求）
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

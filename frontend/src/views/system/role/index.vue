@@ -68,13 +68,19 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" destroy-on-close>
+      <el-form ref="formRef" :model="form" :rules="rules" :validate-on-rule-change="false" label-width="90px">
         <el-form-item label="角色名称" prop="roleName">
-          <el-input v-model="form.roleName" placeholder="请输入角色名称" />
+          <el-input v-model="form.roleName" :validate-event="false" placeholder="请输入角色名称" />
         </el-form-item>
         <el-form-item label="角色编码" prop="roleCode">
-          <el-input v-model="form.roleCode" placeholder="请输入角色编码，如：admin" />
+          <el-input
+            v-model="form.roleCode"
+            :validate-event="false"
+            maxlength="32"
+            show-word-limit
+            placeholder="请输入角色编码，如：admin"
+          />
         </el-form-item>
         <el-form-item label="角色描述">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入角色描述" />
@@ -153,10 +159,35 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const formRef = ref()
 const submitLoading = ref(false)
-const form = reactive({ id: null as number | null, roleName: '', roleCode: '', description: '', dataScope: 3, status: 1 })
+interface RoleForm {
+  id: number | null
+  roleName: string
+  roleCode: string
+  description: string
+  dataScope: number
+  status: number
+}
+
+const createEmptyRoleForm = (): RoleForm => ({
+  id: null,
+  roleName: '',
+  roleCode: '',
+  description: '',
+  dataScope: 3,
+  status: 1
+})
+
+const form = reactive<RoleForm>(createEmptyRoleForm())
 const rules = {
-  roleName: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
-  roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }]
+  roleName: [{ required: true, message: '请输入角色名称', trigger: 'change' }],
+  roleCode: [
+    { required: true, message: '请输入角色编码', trigger: 'change' },
+    {
+      pattern: /^[a-z][a-z0-9:_-]{1,31}$/,
+      message: '角色编码需以小写字母开头，仅支持小写字母/数字/:/_/-，长度2-32位',
+      trigger: 'change'
+    }
+  ]
 }
 
 const handleSearch = () => {
@@ -172,22 +203,19 @@ const handleReset = () => {
 }
 const handleCreate = () => {
   dialogTitle.value = '新增角色'
-  form.id = null
-  form.roleName = ''
-  form.roleCode = ''
-  form.description = ''
-  form.dataScope = 3
-  form.status = 1
+  Object.assign(form, createEmptyRoleForm())
   dialogVisible.value = true
 }
 const handleEdit = (row: any) => {
   dialogTitle.value = '编辑角色'
-  form.id = row.id
-  form.roleName = row.roleName || ''
-  form.roleCode = row.roleCode || ''
-  form.description = row.remark || row.description || ''
-  form.dataScope = row.dataScope ?? 3
-  form.status = row.status
+  Object.assign(form, {
+    id: row.id,
+    roleName: row.roleName || '',
+    roleCode: row.roleCode || '',
+    description: row.remark || row.description || '',
+    dataScope: Number(row.dataScope ?? 3),
+    status: Number(row.status ?? 1)
+  } satisfies RoleForm)
   dialogVisible.value = true
 }
 const buildRolePayload = () => ({
