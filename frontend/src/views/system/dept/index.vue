@@ -95,7 +95,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { FolderOpened, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
 
 const treeRef = ref()
@@ -104,6 +103,29 @@ const treeProps = { label: 'deptName', children: 'children' }
 const submitLoading = ref(false)
 const userList = ref<any[]>([])
 
+/** 仅提交实体字段，避免把整棵 children 序列化进请求体 */
+function nodeToDeptPayload(node: any, overrides: Record<string, unknown> = {}) {
+  const sortOrder = node.sortOrder ?? node.sort ?? 0
+  return {
+    id: node.id,
+    parentId: node.parentId ?? null,
+    deptName: node.deptName,
+    deptNo: node.deptNo ?? node.deptCode ?? '',
+    leaderId: node.leaderId ?? null,
+    leaderName: node.leaderName ?? null,
+    sortOrder,
+    status: node.status,
+    level: node.level ?? null,
+    ...overrides,
+  }
+}
+
+function leaderNameById(leaderId: number | null) {
+  if (leaderId == null) return null
+  const u = userList.value.find((x: any) => x.id === leaderId)
+  return u?.realName ?? null
+}
+
 const loadDeptTree = async () => {
   try {
     const res = await request<{ data: any[] }>({ url: '/system/department/tree', method: 'GET' })
@@ -111,22 +133,22 @@ const loadDeptTree = async () => {
   } catch (e) {
     treeData.value = [
       {
-        id: 1, deptName: '总公司', status: 1, sort: 0, children: [
-          { id: 2, deptName: '工程项目管理部', status: 1, sort: 1, children: [
-            { id: 21, deptName: '项目团队A', status: 1, sort: 1 },
-            { id: 22, deptName: '项目团队B', status: 1, sort: 2 },
-            { id: 23, deptName: '项目团队C', status: 1, sort: 3 }
+        id: 1, deptName: '总公司', status: 1, sortOrder: 0, children: [
+          { id: 2, deptName: '工程项目管理部', status: 1, sortOrder: 1, children: [
+            { id: 21, deptName: '项目团队A', status: 1, sortOrder: 1 },
+            { id: 22, deptName: '项目团队B', status: 1, sortOrder: 2 },
+            { id: 23, deptName: '项目团队C', status: 1, sortOrder: 3 }
           ]},
-          { id: 3, deptName: '基础业务部', status: 1, sort: 2 },
-          { id: 4, deptName: '软件业务部', status: 1, sort: 3 },
-          { id: 5, deptName: '财务/综合部', status: 1, sort: 4, children: [
-            { id: 51, deptName: '财务组', status: 1, sort: 1 },
-            { id: 52, deptName: '综合组', status: 1, sort: 2 }
+          { id: 3, deptName: '基础业务部', status: 1, sortOrder: 2 },
+          { id: 4, deptName: '软件业务部', status: 1, sortOrder: 3 },
+          { id: 5, deptName: '财务/综合部', status: 1, sortOrder: 4, children: [
+            { id: 51, deptName: '财务组', status: 1, sortOrder: 1 },
+            { id: 52, deptName: '综合组', status: 1, sortOrder: 2 }
           ]},
-          { id: 6, deptName: '技术支撑部', status: 1, sort: 5, children: [
-            { id: 61, deptName: '预算组', status: 1, sort: 1 },
-            { id: 62, deptName: '采购组', status: 1, sort: 2 },
-            { id: 63, deptName: '资料组', status: 1, sort: 3 }
+          { id: 6, deptName: '技术支撑部', status: 1, sortOrder: 5, children: [
+            { id: 61, deptName: '预算组', status: 1, sortOrder: 1 },
+            { id: 62, deptName: '采购组', status: 1, sortOrder: 2 },
+            { id: 63, deptName: '资料组', status: 1, sortOrder: 3 }
           ]}
         ]
       }
@@ -136,7 +158,7 @@ const loadDeptTree = async () => {
 
 const loadUserList = async () => {
   try {
-    const res = await request<{ data: any[] }>({ url: '/system/user/list', method: 'GET' })
+    const res = await request<{ data: any[] }>({ url: '/system/user/select-list', method: 'GET' })
     userList.value = res.data || []
   } catch (e) {
     userList.value = [
@@ -214,10 +236,10 @@ const handleEdit = (data: any) => {
   form.id = data.id
   form.parentId = data.parentId
   form.deptName = data.deptName
-  form.deptNo = data.deptCode || ''
+  form.deptNo = data.deptNo ?? data.deptCode ?? ''
   form.leaderId = data.leaderId || null
   form.phone = data.phone || ''
-  form.sortOrder = data.sort || 0
+  form.sortOrder = data.sortOrder ?? data.sort ?? 0
   form.status = data.status
   form.remark = data.remark || ''
   dialogVisible.value = true
@@ -225,42 +247,41 @@ const handleEdit = (data: any) => {
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate()
+  try {
+    await formRef.value.validate()
+  } catch {
+    return
+  }
   submitLoading.value = true
+  const leaderName = leaderNameById(form.leaderId)
+  const body = {
+    parentId: form.parentId,
+    deptName: form.deptName,
+    deptNo: form.deptNo,
+    leaderId: form.leaderId,
+    leaderName,
+    sortOrder: form.sortOrder,
+    status: form.status
+  }
   try {
     if (form.id) {
       await request({
         url: '/system/department',
         method: 'PUT',
-        data: {
-          id: form.id,
-          parentId: form.parentId,
-          deptName: form.deptName,
-          deptNo: form.deptNo,
-          leaderId: form.leaderId,
-          sortOrder: form.sortOrder,
-          status: form.status
-        }
+        data: { id: form.id, ...body }
       })
     } else {
       await request({
         url: '/system/department',
         method: 'POST',
-        data: {
-          parentId: form.parentId,
-          deptName: form.deptName,
-          deptNo: form.deptNo,
-          leaderId: form.leaderId,
-          sortOrder: form.sortOrder,
-          status: form.status
-        }
+        data: body
       })
     }
     ElMessage.success('保存成功')
     dialogVisible.value = false
     loadDeptTree()
   } catch (e: any) {
-    ElMessage.error(e.message || '保存失败')
+    ElMessage.error(e?.message || '保存失败')
   } finally {
     submitLoading.value = false
   }
@@ -269,21 +290,21 @@ const handleSubmit = async () => {
 const handleDisable = async (data: any) => {
   try {
     await ElMessageBox.confirm('确定要停用该部门吗？停用后部门下员工将无法正常使用系统。', '提示', { type: 'warning' })
-    await request({ url: '/system/department', method: 'PUT', data: { ...data, status: 0 } })
+    await request({ url: '/system/department', method: 'PUT', data: nodeToDeptPayload(data, { status: 0 }) })
     ElMessage.success('部门已停用')
     loadDeptTree()
-  } catch (e) {
-    if (e !== 'cancel') ElMessage.error('停用失败')
+  } catch (e: any) {
+    if (e !== 'cancel') ElMessage.error(e?.message || '停用失败')
   }
 }
 
 const handleEnable = async (data: any) => {
   try {
-    await request({ url: '/system/department', method: 'PUT', data: { ...data, status: 1 } })
+    await request({ url: '/system/department', method: 'PUT', data: nodeToDeptPayload(data, { status: 1 }) })
     ElMessage.success('部门已启用')
     loadDeptTree()
-  } catch (e) {
-    ElMessage.error('启用失败')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '启用失败')
   }
 }
 
@@ -293,14 +314,14 @@ const handleDelete = (data: any) => {
       await request({ url: `/system/department/${data.id}`, method: 'DELETE' })
       ElMessage.success('删除成功')
       loadDeptTree()
-    } catch (e) {
-      ElMessage.error('该部门下存在员工，无法删除')
+    } catch (e: any) {
+      ElMessage.error(e?.message || '删除失败')
     }
   })
 }
 
-const handleDrop = (draggingNode: any, dropNode: any, dropType: any) => {
-  console.log('拖拽完成', draggingNode.data, dropNode.data, dropType)
+const handleDrop = () => {
+  ElMessage.info('拖拽排序尚未对接后端，刷新后会恢复为服务端顺序')
 }
 </script>
 

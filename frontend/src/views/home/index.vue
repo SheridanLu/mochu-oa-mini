@@ -118,7 +118,12 @@
             <el-carousel height="150px" indicator-position="outside" :interval="5000" autoplay @change="handleCarouselChange">
               <el-carousel-item v-for="item in noticeCarousel" :key="item.id">
                 <div class="carousel-item" @click="handleNoticeClick(item)">
-                  <img v-if="item.coverImage" :src="item.coverImage" class="carousel-img" @error="handleImageError" />
+                  <img
+                    v-if="item.coverImage"
+                    :src="resolveMediaUrl(item.coverImage)"
+                    class="carousel-img"
+                    @error="handleImageError"
+                  />
                   <div v-else class="carousel-placeholder">
                     <el-icon><Document /></el-icon>
                   </div>
@@ -194,6 +199,7 @@ import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatDate, formatDateTime } from '../../utils/format'
+import { resolveMediaUrl } from '@/utils/media'
 import { api } from '../../api'
 import { useUserStore } from '../../stores/user'
 import { getRecentVisits, clearRecentVisits } from '@/utils/recentVisits'

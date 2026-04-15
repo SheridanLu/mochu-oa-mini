@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -34,4 +34,7 @@ public class SysDepartment extends BaseEntity {
     
     @TableField("status")
     private Integer status;
+
+    @TableField(exist = false)
+    private List<SysDepartment> children;
 }

@@ -32,17 +32,21 @@
     </el-card>
 
     <el-card class="table-card">
-      <el-table :data="tableData" stripe>
+      <el-table v-loading="tableLoading" :data="tableData" stripe>
         <el-table-column prop="roleName" label="角色名称" width="150" />
         <el-table-column prop="roleCode" label="角色编码" width="120" />
-        <el-table-column prop="description" label="角色描述" min-width="180" />
+        <el-table-column label="角色描述" min-width="180">
+          <template #default="{ row }">{{ row.remark || row.description || '—' }}</template>
+        </el-table-column>
         <el-table-column prop="userCount" label="用户数量" width="100" align="center" />
+        <el-table-column label="创建时间" width="170">
+          <template #default="{ row }">{{ row.createdAt || row.createTime || '—' }}</template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="80" align="center">
           <template #default="{ row }">
             <el-switch v-model="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" />
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="160" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
@@ -52,7 +56,15 @@
         </el-table-column>
       </el-table>
       <div class="pagination">
-        <el-pagination v-model:current-page="pagination.page" v-model:page-size="pagination.size" :total="pagination.total" layout="total, sizes, prev, pager, next, jumper" />
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.size"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handlePageChange"
+        />
       </div>
     </el-card>
 
@@ -81,7 +93,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -98,24 +110,39 @@ const router = useRouter()
 const filterForm = reactive({ roleName: '', status: null as number | null })
 const tableData = ref<any[]>([])
 const pagination = reactive({ page: 1, size: 20, total: 0 })
+const tableLoading = ref(false)
 
 const loadData = async () => {
+  tableLoading.value = true
   try {
-    const res = await request<{ data: any[] }>({ url: '/system/role/list', method: 'GET' })
-    tableData.value = res.data || []
-    pagination.total = res.data?.length || 0
-  } catch (e) {
-    tableData.value = [
-      { id: 1, roleName: '超级管理员', roleCode: 'admin', description: '拥有系统所有权限', userCount: 2, status: 1, createTime: '2026-01-01 10:00:00' },
-      { id: 2, roleName: '项目经理', roleCode: 'project_manager', description: '负责项目管理和进度跟踪', userCount: 5, status: 1, createTime: '2026-01-05 14:30:00' },
-      { id: 3, roleName: '财务人员', roleCode: 'finance', description: '负责财务相关操作', userCount: 3, status: 1, createTime: '2026-01-10 09:20:00' },
-      { id: 4, roleName: '采购人员', roleCode: 'purchase', description: '负责采购相关操作', userCount: 4, status: 1, createTime: '2026-01-12 11:00:00' },
-      { id: 5, roleName: '普通员工', roleCode: 'employee', description: '普通员工权限', userCount: 20, status: 1, createTime: '2026-01-15 16:45:00' },
-      { id: 6, roleName: '法务人员', roleCode: 'legal', description: '法务相关操作权限', userCount: 2, status: 1, createTime: '2026-02-01 10:00:00' },
-      { id: 7, roleName: '总经理', roleCode: 'gm', description: '公司最高管理权限', userCount: 1, status: 1, createTime: '2026-01-01 08:00:00' }
-    ]
-    pagination.total = 7
+    const res: any = await request({
+      url: '/system/role/list',
+      method: 'GET',
+      params: {
+        roleName: filterForm.roleName || undefined,
+        status: filterForm.status ?? undefined,
+        page: pagination.page,
+        size: pagination.size
+      }
+    })
+    const pageData = res.data
+    tableData.value = pageData?.list || []
+    pagination.total = Number(pageData?.total) || 0
+  } catch {
+    tableData.value = []
+    pagination.total = 0
+  } finally {
+    tableLoading.value = false
   }
+}
+
+const handleSizeChange = () => {
+  pagination.page = 1
+  loadData()
+}
+
+const handlePageChange = () => {
+  loadData()
 }
 
 onMounted(() => {
@@ -125,16 +152,24 @@ onMounted(() => {
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const formRef = ref()
+const submitLoading = ref(false)
 const form = reactive({ id: null as number | null, roleName: '', roleCode: '', description: '', dataScope: 3, status: 1 })
 const rules = {
   roleName: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
   roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }]
 }
 
-const roleCodeMap: Record<string, string> = {}
+const handleSearch = () => {
+  pagination.page = 1
+  loadData()
+}
 
-const handleSearch = () => { loadData() }
-const handleReset = () => { filterForm.roleName = ''; filterForm.status = null }
+const handleReset = () => {
+  filterForm.roleName = ''
+  filterForm.status = null
+  pagination.page = 1
+  loadData()
+}
 const handleCreate = () => {
   dialogTitle.value = '新增角色'
   form.id = null
@@ -150,32 +185,73 @@ const handleEdit = (row: any) => {
   form.id = row.id
   form.roleName = row.roleName || ''
   form.roleCode = row.roleCode || ''
-  form.description = row.description || ''
-  form.dataScope = row.dataScope || 3
+  form.description = row.remark || row.description || ''
+  form.dataScope = row.dataScope ?? 3
   form.status = row.status
   dialogVisible.value = true
 }
+const buildRolePayload = () => ({
+  id: form.id ?? undefined,
+  roleName: form.roleName,
+  roleCode: form.roleCode,
+  remark: form.description || null,
+  dataScope: form.dataScope,
+  status: form.status,
+  roleType: 1
+})
+
 const handleSubmit = async () => {
+  if (!formRef.value) return
   try {
+    await formRef.value.validate()
+  } catch {
+    return
+  }
+  submitLoading.value = true
+  try {
+    const payload = buildRolePayload()
     if (form.id) {
-      await request({ url: '/system/role', method: 'PUT', data: form })
+      await request({ url: '/system/role', method: 'PUT', data: payload })
+      ElMessage.success('保存成功')
+      dialogVisible.value = false
+      await loadData()
     } else {
-      await request({ url: '/system/role', method: 'POST', data: form })
+      const res = await request<{ data: number }>({ url: '/system/role', method: 'POST', data: payload })
+      ElMessage.success('保存成功')
+      dialogVisible.value = false
+      await loadData()
+      const newId = res?.data
+      if (newId != null && Number(newId) > 0) {
+        await router.push({
+          path: '/system/permission',
+          query: { roleId: String(newId), roleName: form.roleName }
+        })
+      }
     }
-    ElMessage.success('保存成功')
-    dialogVisible.value = false
-    loadData()
   } catch (e: any) {
-    ElMessage.error(e.message || '保存失败')
+    ElMessage.error(e?.message || '保存失败')
+  } finally {
+    submitLoading.value = false
   }
 }
 
+const rowToRolePayload = (row: any) => ({
+  id: row.id,
+  roleName: row.roleName,
+  roleCode: row.roleCode,
+  remark: row.remark ?? row.description ?? null,
+  dataScope: row.dataScope ?? 3,
+  status: row.status,
+  roleType: row.roleType ?? 1
+})
+
 const handleStatusChange = async (row: any) => {
   try {
-    await request({ url: '/system/role', method: 'PUT', data: row })
+    await request({ url: '/system/role', method: 'PUT', data: rowToRolePayload(row) })
     ElMessage.success(`已${row.status === 1 ? '启用' : '禁用'}角色`)
   } catch (e: any) {
-    ElMessage.error(e.message || '操作失败')
+    ElMessage.error(e?.message || '操作失败')
+    row.status = row.status === 1 ? 0 : 1
   }
 }
 const handleDelete = (row: any) => {
@@ -185,7 +261,7 @@ const handleDelete = (row: any) => {
       ElMessage.success('删除成功')
       loadData()
     } catch (e: any) {
-      ElMessage.error(e.message || '删除失败')
+      ElMessage.error(e?.message || '删除失败')
     }
   })
 }

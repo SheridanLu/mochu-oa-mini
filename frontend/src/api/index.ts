@@ -377,6 +377,7 @@ supplier: {
     },
     user: {
       list: (params?: any) => request({ url: '/system/user/list', method: 'GET', params }),
+      selectList: () => request({ url: '/system/user/select-list', method: 'GET' }),
       get: (id: number) => request({ url: `/system/user/${id}`, method: 'GET' }),
       create: (data: any) => request({ url: '/system/user', method: 'POST', data }),
       update: (data: any) => request({ url: '/system/user', method: 'PUT', data }),
@@ -384,7 +385,8 @@ supplier: {
       updateRoles: (id: number, data: any) => request({ url: `/system/user/${id}/roles`, method: 'PUT', data }),
     },
     role: {
-      list: () => request({ url: '/system/role/list', method: 'GET' }),
+      list: (params?: any) => request({ url: '/system/role/list', method: 'GET', params }),
+      selectList: () => request({ url: '/system/role/select-list', method: 'GET' }),
       get: (id: number) => request({ url: `/system/role/${id}`, method: 'GET' }),
       create: (data: any) => request({ url: '/system/role', method: 'POST', data }),
       update: (data: any) => request({ url: '/system/role', method: 'PUT', data }),

@@ -31,4 +31,8 @@ public class SysRole extends BaseEntity {
     
     @TableField("remark")
     private String remark;
+
+    /** 拥有该角色的用户数（非表字段） */
+    @TableField(exist = false)
+    private Integer userCount;
 }

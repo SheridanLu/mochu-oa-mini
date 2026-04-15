@@ -1,14 +1,17 @@
 package com.mochu.oa.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mochu.oa.common.PageRequestGuard;
 import com.mochu.oa.entity.SysUser;
 import com.mochu.oa.entity.SysUserRole;
 import com.mochu.oa.mapper.SysUserMapper;
-import com.mochu.oa.service.SysUserRoleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,6 +21,31 @@ import java.util.List;
 public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
     
     private final SysUserRoleService sysUserRoleService;
+
+    public IPage<SysUser> pageUsers(String username, String realName, Integer status, int page, int size) {
+        LambdaQueryWrapper<SysUser> w = new LambdaQueryWrapper<>();
+        if (StringUtils.hasText(username)) {
+            w.like(SysUser::getUsername, username.trim());
+        }
+        if (StringUtils.hasText(realName)) {
+            w.like(SysUser::getRealName, realName.trim());
+        }
+        if (status != null) {
+            w.eq(SysUser::getStatus, status);
+        }
+        w.orderByDesc(SysUser::getId);
+        int pageNum = Math.max(1, page);
+        int pageSize = PageRequestGuard.normalizePageSize(size, 100);
+        return page(new Page<>(pageNum, pageSize), w);
+    }
+
+    /** 部门负责人等下拉：不分页 */
+    public List<SysUser> listForSelect() {
+        return list(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getStatus, 1)
+                .select(SysUser::getId, SysUser::getRealName, SysUser::getUsername)
+                .orderByAsc(SysUser::getRealName));
+    }
     
     public SysUser findByUsername(String username) {
         return getOne(new LambdaQueryWrapper<SysUser>()

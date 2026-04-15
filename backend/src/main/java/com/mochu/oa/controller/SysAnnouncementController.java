@@ -48,12 +48,12 @@ public class SysAnnouncementController {
     
     @PostMapping
     @Operation(summary = "创建公告")
-    public Result<Void> create(@RequestBody SysAnnouncement announcement) {
+    public Result<Long> create(@RequestBody SysAnnouncement announcement) {
         announcement.setStatus("draft");
         announcement.setCreatedAt(LocalDateTime.now());
         announcement.setCreatorName("管理员");
         announcementService.save(announcement);
-        return Result.success(null);
+        return Result.success(announcement.getId());
     }
     
     @PutMapping

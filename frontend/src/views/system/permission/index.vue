@@ -11,7 +11,7 @@
       </div>
       <div class="header-right">
         <el-button @click="handleBack">返回</el-button>
-        <el-button type="primary" @click="handleSave">保存权限</el-button>
+        <el-button type="primary" :loading="saveLoading" @click="handleSave">保存权限</el-button>
       </div>
     </div>
 
@@ -104,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { InfoFilled } from '@element-plus/icons-vue'
@@ -117,8 +117,10 @@ const activeTab = ref('menu')
 const dataScope = ref(1)
 const menuTreeRef = ref()
 const deptTreeRef = ref()
+const saveLoading = ref(false)
 
-const treeProps = { label: 'menuName', children: 'children' }
+/** 与后端 SysPermission 一致；兼容历史 mock 的 menuName */
+const treeProps = { label: 'permissionName', children: 'children' }
 
 const menuTree = ref<any[]>([])
 const checkedMenuIds = ref<number[]>([])
@@ -212,10 +214,17 @@ const checkedActions = ref<string[]>([])
 const deptTree = ref<any[]>([])
 const checkedDeptIds = ref<number[]>([])
 
+const normalizeMenuNodes = (nodes: any[]): any[] =>
+  (nodes || []).map((n) => ({
+    ...n,
+    permissionName: n.permissionName || n.menuName || n.permissionCode || `权限-${n.id}`,
+    children: n.children?.length ? normalizeMenuNodes(n.children) : undefined
+  }))
+
 const loadMenuTree = async () => {
   try {
     const res = await request<{ data: any[] }>({ url: '/system/menu/tree', method: 'GET' })
-    menuTree.value = res.data || []
+    menuTree.value = normalizeMenuNodes(res.data || [])
     const getAllIds = (nodes: any[]): number[] => {
       return nodes.reduce((acc: number[], node) => {
         acc.push(node.id)
@@ -252,7 +261,7 @@ const loadMenuTree = async () => {
 
 const loadDeptTree = async () => {
   try {
-    const res = await request<{ data: any[] }>({ url: '/system/dept/tree', method: 'GET' })
+    const res = await request<{ data: any[] }>({ url: '/system/department/tree', method: 'GET' })
     deptTree.value = res.data || []
   } catch (e) {
     deptTree.value = [{ id: 1, deptName: '总公司', children: [
@@ -276,37 +285,74 @@ const loadRolePermission = async () => {
   if (!roleId) return
   try {
     const res = await request<{ data: number[] }>({ url: `/system/role/${roleId}/permissions`, method: 'GET' })
-    if (res.data) {
-      checkedMenuIds.value = res.data || []
-    }
-  } catch (e) {}
+    checkedMenuIds.value = (res.data || []).map((id: number) => Number(id)).filter((id) => Number.isFinite(id))
+  } catch {
+    checkedMenuIds.value = []
+  }
 }
 
-onMounted(() => {
-  loadMenuTree()
-  loadDeptTree()
-  loadRolePermission()
+const syncMenuTreeChecked = async () => {
+  await nextTick()
+  const tree = menuTreeRef.value as { setCheckedKeys?: (keys: number[]) => void } | undefined
+  tree?.setCheckedKeys?.(checkedMenuIds.value)
+}
+
+onMounted(async () => {
+  const roleIdRaw = route.query.roleId
+  const roleIdStr = typeof roleIdRaw === 'string' ? roleIdRaw : Array.isArray(roleIdRaw) ? roleIdRaw[0] : ''
+  if (!roleIdStr) {
+    ElMessage.warning('请从「角色管理」中点击「权限配置」进入此页')
+    await router.replace('/system/role')
+    return
+  }
+  await loadMenuTree()
+  await loadDeptTree()
+  await loadRolePermission()
+  await syncMenuTreeChecked()
 })
 
-const handleMenuCheck = () => { console.log('菜单勾选变化') }
+const handleMenuCheck = () => {}
 const handleBack = () => { router.push('/system/role') }
 
 const handleSave = async () => {
-  const checkedKeys = menuTreeRef.value?.getCheckedKeys() || []
-  const halfCheckedKeys = menuTreeRef.value?.getHalfCheckedKeys() || []
-  const checkedDeptKeys = deptTreeRef.value?.getCheckedKeys() || []
-  
-  const roleId = route.query.roleId
+  const roleIdRaw = route.query.roleId
+  const roleId = typeof roleIdRaw === 'string' ? Number(roleIdRaw) : Array.isArray(roleIdRaw) ? Number(roleIdRaw[0]) : NaN
+  if (!Number.isFinite(roleId) || roleId <= 0) {
+    ElMessage.warning('缺少角色信息，请从角色管理重新进入权限配置')
+    return
+  }
+
+  activeTab.value = 'menu'
+  await nextTick()
+
+  const tree = menuTreeRef.value as
+    | {
+        getCheckedKeys?: (leafOnly?: boolean) => unknown[]
+        getHalfCheckedKeys?: () => unknown[]
+      }
+    | undefined
+  if (!tree?.getCheckedKeys) {
+    ElMessage.error('菜单树未就绪，请稍后重试')
+    return
+  }
+
+  const checkedKeys = (tree.getCheckedKeys?.() || []).map((k) => Number(k)).filter((k) => Number.isFinite(k))
+  const halfCheckedKeys = (tree.getHalfCheckedKeys?.() || []).map((k) => Number(k)).filter((k) => Number.isFinite(k))
+  const merged = [...new Set([...checkedKeys, ...halfCheckedKeys])]
+
+  saveLoading.value = true
   try {
-    await request({ 
-url: `/system/role/${roleId}/permissions`,
-      method: 'POST', 
-      data: [...checkedKeys, ...halfCheckedKeys]
+    await request({
+      url: `/system/role/${roleId}/permissions`,
+      method: 'POST',
+      data: merged
     })
     ElMessage.success('权限保存成功')
-    router.push('/system/role')
+    await router.push('/system/role')
   } catch (e: any) {
-    ElMessage.error(e.message || '保存失败')
+    ElMessage.error(e?.message || '保存失败')
+  } finally {
+    saveLoading.value = false
   }
 }
 

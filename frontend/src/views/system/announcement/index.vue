@@ -61,7 +61,14 @@
         </el-table-column>
         <el-table-column prop="coverImage" label="封面" width="80">
           <template #default="{ row }">
-            <el-image v-if="row.coverImage" :src="row.coverImage" fit="cover" style="width: 50px; height: 50px" preview-src-list :preview-teleported="true" />
+            <el-image
+              v-if="row.coverImage"
+              :src="resolveMediaUrl(row.coverImage)"
+              fit="cover"
+              style="width: 50px; height: 50px"
+              :preview-src-list="[resolveMediaUrl(row.coverImage)]"
+              :preview-teleported="true"
+            />
             <span v-else class="no-image">无图</span>
           </template>
         </el-table-column>
@@ -118,10 +125,12 @@
         <el-form-item label="封面图片" prop="coverImage">
           <el-upload
             v-model:file-list="coverImageList"
-            action="/common/upload"
+            action="/api/common/upload"
             list-type="picture-card"
+            accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
             :limit="1"
             :on-success="handleCoverSuccess"
+            :on-error="handleUploadError"
             :on-remove="handleCoverRemove"
             :on-preview="handleImagePreview"
             :headers="uploadHeaders"
@@ -137,10 +146,12 @@
         <el-form-item label="内容图片">
           <el-upload
             v-model:file-list="contentImageList"
-            action="/common/upload"
+            action="/api/common/upload"
             list-type="picture-card"
+            accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
             multiple
             :on-success="handleContentImageSuccess"
+            :on-error="handleUploadError"
             :on-remove="handleContentImageRemove"
             :headers="uploadHeaders"
           >
@@ -174,16 +185,23 @@
           <span>发布人：{{ currentRow?.creatorName }}</span>
           <span>发布时间：{{ formatDateTime(currentRow?.publishTime) }}</span>
         </div>
-        <el-image v-if="currentRow?.coverImage" :src="currentRow?.coverImage" fit="contain" style="width: 100%; max-height: 300px; margin: 20px 0" />
+        <el-image v-if="detailCoverUrl" :src="detailCoverUrl" fit="contain" style="width: 100%; max-height: 300px; margin: 20px 0" />
         <div class="detail-content">{{ currentRow?.content }}</div>
-        <div v-if="currentRow?.contentImages?.length" class="detail-images">
-          <el-image v-for="img in currentRow.contentImages" :src="img" fit="contain" :preview-src-list="currentRow.contentImages" style="width: 200px; height: 150px; margin: 10px" />
+        <div v-if="detailContentImages.length" class="detail-images">
+          <el-image
+            v-for="(img, idx) in detailContentImages"
+            :key="idx"
+            :src="img"
+            fit="contain"
+            :preview-src-list="detailContentImages"
+            style="width: 200px; height: 150px; margin: 10px"
+          />
         </div>
       </div>
     </el-dialog>
 
     <el-dialog v-model="imagePreviewVisible" title="图片预览" width="600px">
-      <el-image :src="previewImage" style="width: 100%" />
+      <el-image :src="resolveMediaUrl(previewImage)" style="width: 100%" />
     </el-dialog>
 
     <el-dialog v-model="deleteDialogVisible" title="确认删除" width="400px">
@@ -198,11 +216,15 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { formatDateTime } from '../../../utils/format'
+import { parseJsonStringArray, resolveMediaUrl } from '@/utils/media'
 import { api } from '@/api'
 
-const STORAGE_KEY = 'announcement_'
+function pickUploadData(response: any) {
+  if (response?.code === 200 && response.data) return response.data
+  return response?.data ?? response
+}
 
 const loading = ref(false)
 const tableData = ref<any[]>([])
@@ -243,6 +265,9 @@ const formRules: FormRules = {
 }
 
 const formTitle = computed(() => form.id > 0 ? '编辑公告' : '新建公告')
+
+const detailCoverUrl = computed(() => resolveMediaUrl(currentRow.value?.coverImage))
+const detailContentImages = computed(() => parseJsonStringArray(currentRow.value?.contentImages).map(resolveMediaUrl))
 
 const getStatusType = (status: string) => {
   const types: Record<string, string> = {
@@ -287,13 +312,13 @@ const fetchList = async () => {
       page: pagination.page,
       size: pagination.size
     }
-    const res = await api.announcement.list(params)
+    const res: any = await api.announcement.list(params)
     if (res.code === 200) {
       tableData.value = res.data?.list || []
       pagination.total = res.data?.total || 0
     }
   } catch (e: any) {
-    ElMessage.error(e.message || '获取列表失败')
+    ElMessage.error(e?.message || '获取列表失败')
   } finally {
     loading.value = false
   }
@@ -320,7 +345,7 @@ const handleCreate = () => {
 
 const handleEdit = async (row: any) => {
   try {
-    const res = await api.announcement.get(row.id)
+    const res: any = await api.announcement.get(row.id)
     if (res.code === 200) {
       const data = res.data
       form.id = data.id
@@ -328,16 +353,21 @@ const handleEdit = async (row: any) => {
       form.content = data.content
       form.coverImageId = data.coverImageId || 0
       form.coverImage = data.coverImage || ''
-      form.contentImages = data.contentImages || []
+      form.contentImages = parseJsonStringArray(data.contentImages)
       form.isTop = data.isTop || false
       form.expireTime = data.expireTime || ''
       form.status = data.status
-      coverImageList.value = data.coverImage ? [{ name: data.coverImage, url: data.coverImage }] : []
-      contentImageList.value = (data.contentImages || []).map((url: string, i: number) => ({ name: `img${i}`, url }))
+      coverImageList.value = data.coverImage
+        ? [{ name: 'cover', url: resolveMediaUrl(data.coverImage) }]
+        : []
+      contentImageList.value = form.contentImages.map((url: string, i: number) => ({
+        name: `img${i}`,
+        url: resolveMediaUrl(url)
+      }))
       formDialogVisible.value = true
     }
   } catch (e: any) {
-    ElMessage.error(e.message || '获取详情失败')
+    ElMessage.error(e?.message || '获取详情失败')
   }
 }
 
@@ -348,11 +378,16 @@ const handleView = (row: any) => {
 
 const handleSaveDraft = async () => {
   if (!formRef.value) return
-  await formRef.value.validateField('title').catch(() => {})
+  try {
+    await formRef.value.validateField('title')
+  } catch {
+    return
+  }
   saveLoading.value = true
   try {
     const submitData = {
       ...form,
+      contentImages: JSON.stringify(form.contentImages || []),
       status: 'draft'
     }
     if (form.id > 0) {
@@ -364,7 +399,7 @@ const handleSaveDraft = async () => {
     formDialogVisible.value = false
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e.message || '保存失败')
+    ElMessage.error(e?.message || '保存失败')
   } finally {
     saveLoading.value = false
   }
@@ -372,17 +407,34 @@ const handleSaveDraft = async () => {
 
 const handleSubmitForm = async () => {
   if (!formRef.value) return
-  await formRef.value.validate()
+  try {
+    await formRef.value.validate()
+  } catch {
+    return
+  }
   submitLoading.value = true
   try {
-    if (form.id > 0) {
-      await api.announcement.submit(form.id)
+    const submitData = {
+      ...form,
+      contentImages: JSON.stringify(form.contentImages || [])
     }
+    let id = form.id
+    if (id > 0) {
+      await api.announcement.update(submitData)
+    } else {
+      const createRes: any = await api.announcement.create({ ...submitData, status: 'draft' })
+      if (createRes.code !== 200 || createRes.data == null) {
+        ElMessage.error(createRes?.message || '创建失败')
+        return
+      }
+      id = Number(createRes.data)
+    }
+    await api.announcement.submit(id)
     ElMessage.success('提交审批成功，请等待审批')
     formDialogVisible.value = false
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e.message || '提交审批失败')
+    ElMessage.error(e?.message || '提交审批失败')
   } finally {
     submitLoading.value = false
   }
@@ -394,7 +446,7 @@ const handleSubmit = async (row: any) => {
     ElMessage.success('提交审批成功')
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e.message || '提交失败')
+    ElMessage.error(e?.message || '提交失败')
   }
 }
 
@@ -404,7 +456,7 @@ const handlePublish = async (row: any) => {
     ElMessage.success('发布成功')
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e.message || '发布失败')
+    ElMessage.error(e?.message || '发布失败')
   }
 }
 
@@ -414,7 +466,7 @@ const handleOffline = async (row: any) => {
     ElMessage.success('已下线')
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e.message || '操作失败')
+    ElMessage.error(e?.message || '操作失败')
   }
 }
 
@@ -431,15 +483,20 @@ const handleDeleteConfirm = async () => {
     deleteDialogVisible.value = false
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e.message || '删除失败')
+    ElMessage.error(e?.message || '删除失败')
   } finally {
     deleteLoading.value = false
   }
 }
 
+const handleUploadError = () => {
+  ElMessage.error('图片上传失败，请检查网络或登录是否有效')
+}
+
 const handleCoverSuccess = (response: any, file: any) => {
-  form.coverImageId = response.data?.id || 0
-  form.coverImage = response.data?.previewUrl || file.url
+  const d = pickUploadData(response)
+  form.coverImageId = Number(d?.id) || 0
+  form.coverImage = String(d?.previewUrl || d?.url || file.url || '')
 }
 
 const handleCoverRemove = () => {
@@ -448,17 +505,23 @@ const handleCoverRemove = () => {
 }
 
 const handleContentImageSuccess = (response: any, file: any) => {
-  form.contentImages.push(response.data?.previewUrl || file.url)
+  const d = pickUploadData(response)
+  const url = String(d?.previewUrl || d?.url || file.url || '')
+  if (url) form.contentImages.push(url)
 }
 
 const handleContentImageRemove = (file: any) => {
-  const url = file.url || file.response?.data?.previewUrl
-  const idx = form.contentImages.indexOf(url)
+  const d = file?.response ? pickUploadData(file.response) : null
+  const url = String(file?.url || d?.previewUrl || d?.url || '')
+  const idx = form.contentImages.findIndex(
+    (u) => u === url || resolveMediaUrl(u) === resolveMediaUrl(url)
+  )
   if (idx > -1) form.contentImages.splice(idx, 1)
 }
 
 const handleImagePreview = (file: any) => {
-  previewImage.value = file.url
+  const d = file?.response ? pickUploadData(file.response) : null
+  previewImage.value = resolveMediaUrl(String(file?.url || d?.previewUrl || d?.url || ''))
   imagePreviewVisible.value = true
 }
 

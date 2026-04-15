@@ -175,7 +175,7 @@ const fetchList = async () => {
       pagination.total = res.data?.total || 0
     }
   } catch (e: any) {
-    ElMessage.error(e.message || '获取列表失败')
+    ElMessage.error(e?.message || '获取列表失败')
   } finally {
     loading.value = false
   }
@@ -208,7 +208,7 @@ const handleEdit = async (row: any) => {
       formDialogVisible.value = true
     }
   } catch (e: any) {
-    ElMessage.error(e.message || '获取详情失败')
+    ElMessage.error(e?.message || '获取详情失败')
   }
 }
 
@@ -219,7 +219,11 @@ const handleView = (row: any) => {
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate()
+  try {
+    await formRef.value.validate()
+  } catch {
+    return
+  }
   submitLoading.value = true
   try {
     if (form.id > 0) {
@@ -231,7 +235,7 @@ const handleSubmit = async () => {
     formDialogVisible.value = false
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e.message || '保存失败')
+    ElMessage.error(e?.message || '保存失败')
   } finally {
     submitLoading.value = false
   }
