@@ -33,10 +33,10 @@
             :default-expanded-keys="expandedMenuIds"
             @check="handleMenuCheck"
           >
-            <template #default="{ node, data }">
+            <template #default="{ data }">
               <span class="custom-tree-node">
                 <el-icon v-if="data.icon"><component :is="data.icon" /></el-icon>
-                <span>{{ node.label }}</span>
+                <span>{{ data.permissionName || data.menuName || data.permissionCode || `权限-${data.id}` }}</span>
               </span>
             </template>
           </el-tree>
@@ -348,7 +348,12 @@ const handleSave = async () => {
       data: merged
     })
     ElMessage.success('权限保存成功')
-    await router.push('/system/role')
+    await router.push({
+      path: '/system/role',
+      query: {
+        roleName: String(route.query.roleName || '')
+      }
+    })
   } catch (e: any) {
     ElMessage.error(e?.message || '保存失败')
   } finally {

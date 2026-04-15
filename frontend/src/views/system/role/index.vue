@@ -108,9 +108,10 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { request } from '@/utils/request'
 
+const route = useRoute()
 const router = useRouter()
 
 const filterForm = reactive({ roleName: '', status: null as number | null })
@@ -152,6 +153,11 @@ const handlePageChange = () => {
 }
 
 onMounted(() => {
+  const roleName = typeof route.query.roleName === 'string' ? route.query.roleName : ''
+  if (roleName) {
+    filterForm.roleName = roleName
+    pagination.page = 1
+  }
   loadData()
 })
 
@@ -257,7 +263,7 @@ const handleSubmit = async () => {
       }
     }
   } catch (e: any) {
-    ElMessage.error(e?.message || '保存失败')
+    ElMessage.error(e?.response?.data?.message || e?.message || '保存失败')
   } finally {
     submitLoading.value = false
   }
