@@ -1,5 +1,33 @@
 <template>
   <div class="home-container">
+    <div class="home-toolbar">
+      <div class="toolbar-left">
+        <span class="welcome-text">工作台</span>
+        <span class="welcome-sub">待办与公告每 5 分钟自动刷新，亦可手动刷新全部模块</span>
+      </div>
+      <el-button type="primary" :loading="homeRefreshing" @click="refreshAll">刷新全部</el-button>
+    </div>
+
+    <el-card v-if="recentList.length > 0" class="recent-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span>最近访问</span>
+          <el-button type="danger" link @click="clearRecentList">清空记录</el-button>
+        </div>
+      </template>
+      <div class="recent-chips">
+        <el-tag
+          v-for="item in recentList"
+          :key="item.path + '-' + item.at"
+          class="recent-chip"
+          effect="plain"
+          @click="router.push(item.path)"
+        >
+          {{ item.title }}
+        </el-tag>
+      </div>
+    </el-card>
+
     <el-row :gutter="20">
       <el-col :span="6">
         <div class="stat-card" @click="$router.push('/project')">
@@ -166,8 +194,9 @@ import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatDate, formatDateTime } from '../../utils/format'
-import api from '../../api'
+import { api } from '../../api'
 import { useUserStore } from '../../stores/user'
+import { getRecentVisits, clearRecentVisits } from '@/utils/recentVisits'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -178,6 +207,8 @@ const todoLoading = ref(false)
 const noticeLoading = ref(false)
 const carouselLoading = ref(false)
 const showCustomizeDialog = ref(false)
+const homeRefreshing = ref(false)
+const recentList = ref<{ path: string; title: string; at: number }[]>([])
 
 const stats = reactive({
   projectCount: 0,
@@ -222,6 +253,8 @@ const BIZ_TYPE_MAP: Record<string, string> = {
   statement: '对账确认'
 }
 
+const bizTypeLabel = (bizType: string) => BIZ_TYPE_MAP[(bizType || '').toLowerCase()] || bizType || '-'
+
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const fetchStats = async () => {
@@ -236,13 +269,15 @@ const fetchStats = async () => {
 }
 
 const fetchTodoList = async () => {
+  const uid = userStore.userInfo?.id
+  if (!uid) return
   todoLoading.value = true
   try {
-    const res = await api.todo.list({ category: 'todo', page: 1, size: 10 })
+    const res = await api.todo.list({ userId: uid, category: 'TODO', page: 1, size: 10 })
     if (res.code === 200) {
       todoList.value = (res.data?.list || []).map((item: any) => ({
         ...item,
-        bizTypeText: BIZ_TYPE_MAP[item.bizType] || item.bizType,
+        bizTypeText: bizTypeLabel(item.bizType),
         priorityText: item.priority === 1 ? '紧急' : item.priority === 2 ? '重要' : '一般',
         priorityTextVal: item.priority
       }))
@@ -288,7 +323,11 @@ const getPriorityType = (priority: number) => {
 }
 
 const handleTodoClick = (item: any) => {
-  router.push(`/approval/detail?id=${item.id}`)
+  if (item.instanceId) {
+    router.push({ path: '/approval', query: { instanceId: String(item.instanceId) } })
+  } else {
+    router.push('/approval')
+  }
 }
 
 const handleNoticeClick = (item: any) => {
@@ -321,12 +360,34 @@ const saveQuickEntries = () => {
   ElMessage.success('保存成功')
 }
 
+const loadRecentList = () => {
+  recentList.value = getRecentVisits()
+}
+
+const clearRecentList = () => {
+  clearRecentVisits()
+  loadRecentList()
+  ElMessage.success('已清空最近访问')
+}
+
+const refreshAll = async () => {
+  homeRefreshing.value = true
+  try {
+    await Promise.all([fetchStats(), fetchTodoList(), fetchCarousel(), fetchNoticeList()])
+    loadRecentList()
+    ElMessage.success('已刷新')
+  } finally {
+    homeRefreshing.value = false
+  }
+}
+
 const initRefreshTimer = () => {
   if (refreshTimer) clearInterval(refreshTimer)
   refreshTimer = setInterval(() => {
     fetchTodoList()
     fetchCarousel()
     fetchNoticeList()
+    fetchStats()
   }, REFRESH_INTERVAL)
 }
 
@@ -336,6 +397,7 @@ onMounted(() => {
   fetchCarousel()
   fetchNoticeList()
   loadQuickEntries()
+  loadRecentList()
   initRefreshTimer()
 })
 
@@ -346,6 +408,22 @@ onUnmounted(() => {
 
 <style scoped>
 .home-container { padding: 20px; }
+.home-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.toolbar-left { display: flex; flex-direction: column; gap: 4px; }
+.welcome-text { font-size: 18px; font-weight: 600; color: #303133; }
+.welcome-sub { font-size: 12px; color: #909399; }
+.recent-card { margin-bottom: 16px; border-radius: 8px; }
+.recent-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.recent-chip { cursor: pointer; }
 .stat-card { background: #fff; border-radius: 8px; padding: 20px; display: flex; align-items: center; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05); cursor: pointer; transition: transform 0.2s; }
 .stat-card:hover { transform: translateY(-2px); }
 .stat-icon { width: 60px; height: 60px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; margin-right: 16px; }

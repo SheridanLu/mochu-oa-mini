@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,18 +37,52 @@ public class BizPaymentSupervisionPlanController {
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "项目ID") @RequestParam(required = false) Long projectId,
-            @Parameter(description = "督办状态") @RequestParam(required = false) Integer supervisionStatus) {
+            @Parameter(description = "合同ID") @RequestParam(required = false) Long contractId,
+            @Parameter(description = "优先级 1高2中3低") @RequestParam(required = false) Integer priority,
+            @Parameter(description = "督办状态") @RequestParam(required = false) Integer supervisionStatus,
+            @Parameter(description = "审批状态") @RequestParam(required = false) Integer approvalStatus,
+            @Parameter(description = "超期等级: warning>0 serious>7") @RequestParam(required = false) String overdueLevel) {
         Page<BizPaymentSupervisionPlan> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<BizPaymentSupervisionPlan> wrapper = new LambdaQueryWrapper<>();
         if (projectId != null) {
             wrapper.eq(BizPaymentSupervisionPlan::getProjectId, projectId);
         }
+        if (contractId != null) {
+            wrapper.eq(BizPaymentSupervisionPlan::getContractId, contractId);
+        }
+        if (priority != null) {
+            wrapper.eq(BizPaymentSupervisionPlan::getPriority, priority);
+        }
         if (supervisionStatus != null) {
             wrapper.eq(BizPaymentSupervisionPlan::getSupervisionStatus, supervisionStatus);
+        }
+        if (approvalStatus != null) {
+            wrapper.eq(BizPaymentSupervisionPlan::getApprovalStatus, approvalStatus);
+        }
+        if ("warning".equalsIgnoreCase(overdueLevel)) {
+            wrapper.gt(BizPaymentSupervisionPlan::getOverdueDays, 0);
+        } else if ("serious".equalsIgnoreCase(overdueLevel)) {
+            wrapper.gt(BizPaymentSupervisionPlan::getOverdueDays, 7);
         }
         wrapper.orderByDesc(BizPaymentSupervisionPlan::getCreatedAt);
         Page<BizPaymentSupervisionPlan> result = bizPaymentSupervisionPlanService.page(page, wrapper);
         return Result.success(result);
+    }
+
+    @GetMapping("/summary")
+    @Operation(summary = "督办列表统计卡片")
+    public Result<Map<String, Object>> summary() {
+        List<BizPaymentSupervisionPlan> all = bizPaymentSupervisionPlanService.list();
+        long inProgress = all.stream().filter(p -> p.getSupervisionStatus() != null && p.getSupervisionStatus() == 2).count();
+        long overdue = all.stream().filter(p -> p.getOverdueDays() != null && p.getOverdueDays() > 0).count();
+        BigDecimal gapSum = all.stream()
+                .map(p -> p.getGapAmount() != null ? p.getGapAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Map<String, Object> m = new HashMap<>();
+        m.put("inProgress", inProgress);
+        m.put("overdue", overdue);
+        m.put("gapTotal", gapSum);
+        return Result.success(m);
     }
     
     @GetMapping("/{id}")

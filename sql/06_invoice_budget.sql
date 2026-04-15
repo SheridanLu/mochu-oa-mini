@@ -61,6 +61,7 @@ CREATE TABLE biz_budget_allocation (
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_by      BIGINT COMMENT '更新人',
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted         TINYINT DEFAULT 0 COMMENT '是否删除: 0-否 1-是',
     INDEX idx_department_project (department_id, project_id, year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='部门预算表';
 
@@ -85,6 +86,7 @@ CREATE TABLE biz_cost_collection (
     created_at          DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_by          BIGINT COMMENT '更新人',
     updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted             TINYINT DEFAULT 0 COMMENT '是否删除: 0-否 1-是',
     INDEX idx_project_id (project_id),
     INDEX idx_cost_category (cost_category),
     INDEX idx_collected_date (collected_date)

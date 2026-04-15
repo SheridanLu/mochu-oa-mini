@@ -22,9 +22,10 @@ public interface BizApprovalService extends IService<BizApprovalInstance> {
     
     void cancel(Long instanceId);
     
-    List<Map<String, Object>> getTodoList(Long userId, String category, String bizType, String keyword, int page, int size);
-    
-    List<Map<String, Object>> getDoneList(Long userId, String bizType, String keyword, int page, int size);
+    /**
+     * 分页待办/已办/已阅列表，返回 list、total
+     */
+    Map<String, Object> getTodoList(Long userId, String category, String bizType, String keyword, int page, int size);
     
     List<Map<String, Object>> getHistory(Long instanceId);
     

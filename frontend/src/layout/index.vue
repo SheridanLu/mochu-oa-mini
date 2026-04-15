@@ -67,8 +67,10 @@
           <el-menu-item index="/finance/reconciliation">收入对账</el-menu-item>
           <el-menu-item index="/finance/supervision">回款督办</el-menu-item>
           <el-menu-item index="/finance/payment-plan">付款计划</el-menu-item>
+          <el-menu-item index="/finance/payment-apply">付款申请</el-menu-item>
           <el-menu-item index="/finance/expense">日常报销</el-menu-item>
           <el-menu-item index="/finance/invoice">发票管理</el-menu-item>
+          <el-menu-item index="/finance/budget">部门预算</el-menu-item>
           <el-menu-item index="/finance/cost">成本归集</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="/report">
@@ -113,13 +115,13 @@
           </el-breadcrumb>
         </div>
         <div class="header-right">
-          <el-badge :value="5" class="badge">
+          <el-badge :value="todoBadge" :hidden="todoBadge === 0" :max="99" class="badge" @click="goApproval">
             <el-icon><Bell /></el-icon>
           </el-badge>
           <el-dropdown @command="handleCommand">
             <div class="user-info">
               <el-icon><User /></el-icon>
-              <span>管理员</span>
+              <span>{{ displayName }}</span>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
@@ -139,11 +141,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useMenuStore } from '@/stores/menu'
 import axios from 'axios'
+import { api } from '@/api'
+import { pushRecentVisit } from '@/utils/recentVisits'
 
 const route = useRoute()
 const router = useRouter()
@@ -151,8 +155,32 @@ const userStore = useUserStore()
 const menuStore = useMenuStore()
 
 const isCollapse = ref(false)
+const todoBadge = ref(0)
 const activeMenu = computed(() => route.path)
 const currentRoute = computed(() => route.meta.title as string)
+const displayName = computed(() => userStore.userInfo?.realName || userStore.userInfo?.username || '未登录')
+
+let todoPollTimer: ReturnType<typeof setInterval> | null = null
+
+const refreshTodoBadge = async () => {
+  const uid = userStore.userInfo?.id
+  if (!uid) {
+    todoBadge.value = 0
+    return
+  }
+  try {
+    const res: any = await api.todo.count({ userId: uid })
+    if (res.code === 200) {
+      todoBadge.value = Number(res.data?.todoCount) || 0
+    }
+  } catch {
+    /* 忽略角标拉取失败 */
+  }
+}
+
+const goApproval = () => {
+  router.push('/approval')
+}
 
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
@@ -179,8 +207,23 @@ const loadMenus = async () => {
   }
 }
 
+watch(
+  () => route.fullPath,
+  () => {
+    const title = (route.meta?.title as string) || ''
+    pushRecentVisit(route.path, title)
+  },
+  { immediate: true }
+)
+
 onMounted(() => {
   loadMenus()
+  void refreshTodoBadge()
+  todoPollTimer = setInterval(() => void refreshTodoBadge(), 120000)
+})
+
+onUnmounted(() => {
+  if (todoPollTimer) clearInterval(todoPollTimer)
 })
 </script>
 

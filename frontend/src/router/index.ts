@@ -171,6 +171,12 @@ const routes: RouteRecordRaw[] = [
             meta: { title: '付款计划' }
           },
           {
+            path: 'payment-apply',
+            name: 'FinancePaymentApply',
+            component: () => import('@/views/finance/payment-apply/index.vue'),
+            meta: { title: '付款申请' }
+          },
+          {
             path: 'expense',
             name: 'FinanceExpense',
             component: () => import('@/views/finance/expense/index.vue'),
@@ -189,6 +195,12 @@ const routes: RouteRecordRaw[] = [
             meta: { title: '发票管理' }
           },
           {
+            path: 'budget',
+            name: 'FinanceBudget',
+            component: () => import('@/views/finance/budget/index.vue'),
+            meta: { title: '部门预算' }
+          },
+          {
             path: 'cost',
             name: 'FinanceCost',
             component: () => import('@/views/finance/cost/index.vue'),
@@ -201,6 +213,30 @@ const routes: RouteRecordRaw[] = [
         name: 'Report',
         component: () => import('@/views/report/index.vue'),
         meta: { title: '报表中心' }
+      },
+      {
+        path: '/report/project',
+        name: 'ReportProject',
+        component: () => import('@/views/report/project.vue'),
+        meta: { title: '项目进度报表' }
+      },
+      {
+        path: '/report/purchase',
+        name: 'ReportPurchase',
+        component: () => import('@/views/report/purchase.vue'),
+        meta: { title: '采购分析报表' }
+      },
+      {
+        path: '/report/finance',
+        name: 'ReportFinance',
+        component: () => import('@/views/report/finance.vue'),
+        meta: { title: '财务分析报表' }
+      },
+      {
+        path: '/report/custom',
+        name: 'ReportCustom',
+        component: () => import('@/views/report/custom.vue'),
+        meta: { title: '自定义报表' }
       },
       {
         path: '/approval',

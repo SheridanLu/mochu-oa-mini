@@ -16,7 +16,7 @@
     </div>
 
     <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-      <el-tab-pane label="待办" name="todo">
+      <el-tab-pane label="待办" name="TODO">
         <template #label>
           <span class="tab-label">
             待办
@@ -24,7 +24,7 @@
           </span>
         </template>
       </el-tab-pane>
-      <el-tab-pane label="已办" name="done">
+      <el-tab-pane label="已办" name="DONE">
         <template #label>
           <span class="tab-label">
             已办
@@ -32,7 +32,7 @@
           </span>
         </template>
       </el-tab-pane>
-      <el-tab-pane label="已阅" name="read">
+      <el-tab-pane label="已阅" name="READ">
         <template #label>
           <span class="tab-label">
             已阅
@@ -97,7 +97,7 @@
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleView(row)">处理</el-button>
-            <el-button v-if="activeTab === 'todo'" type="primary" link @click="handleTransfer(row)">转办</el-button>
+            <el-button v-if="activeTab === 'TODO'" type="primary" link @click="handleTransfer(row)">转办</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -130,16 +130,35 @@
         <el-button type="primary" @click="handleTransferSubmit" :loading="transferLoading">确定</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="historyVisible" title="审批记录" width="720px" @closed="onHistoryClosed">
+      <el-table :data="historyRows" stripe max-height="420">
+        <el-table-column prop="nodeOrder" label="顺序" width="70" />
+        <el-table-column prop="nodeName" label="节点" width="120" />
+        <el-table-column prop="approverName" label="审批人" width="100" />
+        <el-table-column prop="action" label="动作" width="90" />
+        <el-table-column prop="opinion" label="意见" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="operateTime" label="时间" width="170">
+          <template #default="{ row }">{{ formatDateTime(row.operateTime) }}</template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatDateTime } from '../../utils/format'
-import api from '../../api'
+import { api } from '../../api'
+import { useUserStore } from '@/stores/user'
 
-const activeTab = ref('todo')
+const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
+
+const activeTab = ref('TODO')
 const loading = ref(false)
 const tableData = ref<any[]>([])
 const todoCount = ref(0)
@@ -149,10 +168,13 @@ const userList = ref<any[]>([])
 const transferDialogVisible = ref(false)
 const transferLoading = ref(false)
 const transferForm = reactive({
-  todoId: 0,
+  instanceId: 0,
   handlerId: 0,
   opinion: ''
 })
+
+const historyVisible = ref(false)
+const historyRows = ref<any[]>([])
 
 const filterForm = reactive({
   keyword: '',
@@ -175,9 +197,32 @@ const BIZ_TYPE_MAP: Record<string, string> = {
   statement: '对账确认'
 }
 
-const fetchCount = async () => {
+const bizTypeLabel = (bizType: string) => BIZ_TYPE_MAP[(bizType || '').toLowerCase()] || bizType || '-'
+
+const currentUserId = () => {
+  const id = userStore.userInfo?.id
+  return id && id > 0 ? id : null
+}
+
+const loadUserOptions = async () => {
   try {
-    const res = await api.todo.count()
+    const res = await api.system.user.list()
+    if (res.code === 200) {
+      userList.value = (res.data || []).map((u: any) => ({
+        id: u.id,
+        name: u.realName || u.username || String(u.id)
+      }))
+    }
+  } catch (e) {
+    console.error('加载用户列表失败', e)
+  }
+}
+
+const fetchCount = async () => {
+  const uid = currentUserId()
+  if (!uid) return
+  try {
+    const res = await api.todo.count({ userId: uid })
     if (res.code === 200) {
       todoCount.value = res.data?.todoCount || 0
       doneCount.value = res.data?.doneCount || 0
@@ -189,14 +234,18 @@ const fetchCount = async () => {
 }
 
 const fetchList = async () => {
+  const uid = currentUserId()
+  if (!uid) {
+    ElMessage.warning('未获取到登录用户信息，请重新登录')
+    return
+  }
   loading.value = true
   try {
     const params = {
+      userId: uid,
       category: activeTab.value,
       keyword: filterForm.keyword,
-      bizType: filterForm.bizType,
-      startTime: filterForm.dateRange?.[0],
-      endTime: filterForm.dateRange?.[1],
+      bizType: filterForm.bizType || undefined,
       page: pagination.page,
       size: pagination.size
     }
@@ -204,7 +253,7 @@ const fetchList = async () => {
     if (res.code === 200) {
       tableData.value = (res.data?.list || []).map((item: any) => ({
         ...item,
-        bizTypeText: BIZ_TYPE_MAP[item.bizType] || item.bizType
+        bizTypeText: bizTypeLabel(item.bizType)
       }))
       pagination.total = res.data?.total || 0
     }
@@ -239,12 +288,30 @@ const handleRefresh = () => {
   ElMessage.success('刷新成功')
 }
 
+const loadHistory = async (instanceId: number) => {
+  try {
+    const res = await api.approval.history(instanceId)
+    if (res.code === 200) {
+      historyRows.value = res.data || []
+      historyVisible.value = true
+    } else {
+      ElMessage.error(res.message || '加载审批记录失败')
+    }
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载审批记录失败')
+  }
+}
+
 const handleView = (row: any) => {
-  window.location.href = `/approval/detail?id=${row.id}`
+  if (row.instanceId) {
+    void loadHistory(row.instanceId)
+  } else {
+    ElMessage.warning('缺少流程实例，无法查看')
+  }
 }
 
 const handleTransfer = (row: any) => {
-  transferForm.todoId = row.id
+  transferForm.instanceId = row.instanceId
   transferForm.handlerId = 0
   transferForm.opinion = ''
   transferDialogVisible.value = true
@@ -255,13 +322,22 @@ const handleTransferSubmit = async () => {
     ElMessage.warning('请选择转办给')
     return
   }
+  const uid = currentUserId()
+  if (!uid) {
+    ElMessage.warning('未获取到当前用户')
+    return
+  }
   transferLoading.value = true
   try {
-    await api.todo.handle(transferForm.todoId, {
-      actionType: 'transfer',
-      handlerId: transferForm.handlerId,
+    const res: any = await api.approval.delegate(transferForm.instanceId, {
+      fromUserId: uid,
+      toUserId: transferForm.handlerId,
       opinion: transferForm.opinion
     })
+    if (res.code !== 200) {
+      ElMessage.error(res.message || '转办失败')
+      return
+    }
     ElMessage.success('转办成功')
     transferDialogVisible.value = false
     handleRefresh()
@@ -269,6 +345,20 @@ const handleTransferSubmit = async () => {
     ElMessage.error(e.message || '转办失败')
   } finally {
     transferLoading.value = false
+  }
+}
+
+const openInstanceFromQuery = () => {
+  const raw = route.query.instanceId
+  if (raw == null || raw === '') return
+  const num = Number(Array.isArray(raw) ? raw[0] : raw)
+  if (!Number.isFinite(num)) return
+  void loadHistory(num)
+}
+
+const onHistoryClosed = () => {
+  if (route.query.instanceId) {
+    router.replace({ path: '/approval', query: {} })
   }
 }
 
@@ -282,9 +372,16 @@ const handleCurrentChange = (page: number) => {
   fetchList()
 }
 
+watch(
+  () => route.query.instanceId,
+  () => openInstanceFromQuery()
+)
+
 onMounted(() => {
+  void loadUserOptions()
   fetchCount()
   fetchList()
+  openInstanceFromQuery()
 })
 </script>
 

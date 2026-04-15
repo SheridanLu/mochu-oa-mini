@@ -63,6 +63,7 @@ export const api = {
       create: (data: any) => request({ url: '/contract/income', method: 'POST', data }),
       update: (data: any) => request({ url: '/contract/income', method: 'PUT', data }),
       delete: (id: number) => request({ url: `/contract/income/${id}`, method: 'DELETE' }),
+      submit: (id: number) => request({ url: `/contract/income/${id}/submit`, method: 'POST' }),
     },
     expense: {
       list: () => request({ url: '/contract/expense/list', method: 'GET' }),
@@ -76,6 +77,7 @@ export const api = {
   
   statement: {
     list: () => request({ url: '/statement/list', method: 'GET' }),
+    summary: () => request({ url: '/statement/summary', method: 'GET' }),
     page: (params: any) => request({ url: '/statement/page', method: 'GET', params }),
     get: (id: number) => request({ url: `/statement/${id}`, method: 'GET' }),
     create: (data: any) => request({ url: '/api/statement', method: 'POST', data }),
@@ -95,6 +97,7 @@ export const api = {
   
   paymentSupervision: {
     list: () => request({ url: '/payment-supervision/list', method: 'GET' }),
+    summary: () => request({ url: '/payment-supervision/summary', method: 'GET' }),
     page: (params: any) => request({ url: '/payment-supervision/page', method: 'GET', params }),
     get: (id: number) => request({ url: `/payment-supervision/${id}`, method: 'GET' }),
     create: (data: any) => request({ url: '/api/payment-supervision', method: 'POST', data }),
@@ -128,6 +131,7 @@ export const api = {
       verifyInvoice: (data: any) => request({ url: '/expense/report/invoice-verify', method: 'POST', data }),
       export: (data: any) => request({ url: '/expense/report/export', method: 'POST', data }),
       getApprovalTrace: (id: number) => request({ url: `/expense/report/${id}/approval-trace`, method: 'GET' }),
+      summary: (params?: any) => request({ url: '/expense/report/summary', method: 'GET', params }),
     },
   },
   
@@ -172,7 +176,6 @@ supplier: {
       export: (params: any) => request({ url: '/supplier/rating/export', method: 'GET', params }),
     }
   },
-  },
   
   material: {
     list: () => request({ url: '/material/list', method: 'GET' }),
@@ -204,11 +207,17 @@ supplier: {
     getIncomeSplit: (contractId: number) => request({ url: `/gantt/income-split/${contractId}`, method: 'GET' }),
   },
   
+  /** 审批待办（后端：/api/approval/todo） */
   todo: {
-    list: (params: any) => request({ url: '/todo/list', method: 'GET', params }),
-    get: (id: number) => request({ url: `/todo/${id}`, method: 'GET' }),
-    count: () => request({ url: '/todo/count', method: 'GET' }),
-    handle: (id: number, data: any) => request({ url: `/todo/${id}/handle`, method: 'POST', data }),
+    list: (params: { userId: number; category?: string; bizType?: string; keyword?: string; page?: number; size?: number }) =>
+      request({ url: '/approval/todo', method: 'GET', params }),
+    count: (params: { userId: number }) => request({ url: '/approval/todo/count', method: 'GET', params }),
+  },
+
+  approval: {
+    history: (instanceId: number) => request({ url: `/approval/${instanceId}/history`, method: 'GET' }),
+    delegate: (instanceId: number, params: { fromUserId: number; toUserId: number; opinion?: string }) =>
+      request({ url: `/approval/${instanceId}/delegate`, method: 'POST', params }),
   },
   
   announcement: {
@@ -233,6 +242,7 @@ supplier: {
   invoice: {
     list: (params: any) => request({ url: '/invoice/list', method: 'GET', params }),
     page: (params: any) => request({ url: '/invoice/page', method: 'GET', params }),
+    summary: (params?: any) => request({ url: '/invoice/summary', method: 'GET', params }),
     get: (id: number) => request({ url: `/invoice/${id}`, method: 'GET' }),
     create: (data: any) => request({ url: '/invoice', method: 'POST', data }),
     update: (data: any) => request({ url: '/invoice', method: 'PUT', data }),
@@ -248,10 +258,29 @@ supplier: {
       create: (data: any) => request({ url: '/payment-plan', method: 'POST', data }),
       update: (data: any) => request({ url: '/payment-plan', method: 'PUT', data }),
       delete: (id: number) => request({ url: `/payment-plan/${id}`, method: 'DELETE' }),
+      summary: () => request({ url: '/payment-plan/summary', method: 'GET' }),
       monthly: (month: string) => request({ url: `/payment-plan/monthly/${month}`, method: 'GET' }),
       getByContract: (contractId: number) => request({ url: `/payment-plan/contracts/${contractId}`, method: 'GET' }),
       generateMonthly: (data: any) => request({ url: '/payment-plan/generate-monthly', method: 'POST', data }),
       updateStatus: (id: number, data: any) => request({ url: `/payment-plan/${id}/status`, method: 'PUT', data }),
+      /** 与列表筛选一致；需 fetch + blob 下载 */
+      exportCsvQuery: (params: {
+        contractId?: number
+        contractIds?: number[]
+        projectId?: number
+        planMonth?: string
+        status?: number
+      }) => {
+        const q = new URLSearchParams()
+        if (params.contractId != null) q.set('contractId', String(params.contractId))
+        if (params.projectId != null) q.set('projectId', String(params.projectId))
+        if (params.planMonth) q.set('planMonth', params.planMonth)
+        if (params.status != null) q.set('status', String(params.status))
+        if (params.contractIds?.length) {
+          for (const id of params.contractIds) q.append('contractIds', String(id))
+        }
+        return `/api/payment-plan/export/csv?${q.toString()}`
+      },
     },
   },
   
@@ -288,6 +317,7 @@ supplier: {
     get: (id: number) => request({ url: `/cost/${id}`, method: 'GET' }),
     create: (data: any) => request({ url: '/cost', method: 'POST', data }),
     update: (data: any) => request({ url: '/cost', method: 'PUT', data }),
+    summary: (params?: any) => request({ url: '/cost/summary', method: 'GET', params }),
     statistics: (params: any) => request({ url: '/cost/statistics', method: 'GET', params }),
     daily: (params: any) => request({ url: '/cost/daily', method: 'GET', params }),
     monthly: (params: any) => request({ url: '/cost/monthly', method: 'GET', params }),
@@ -308,6 +338,17 @@ supplier: {
     warnings: (params: any) => request({ url: '/budget/warning', method: 'GET', params }),
   },
   
+  report: {
+    overview: (params?: any) => request({ url: '/report/overview', method: 'GET', params }),
+    trend: (params?: { months?: number }) => request({ url: '/report/trend', method: 'GET', params }),
+    /** 返回带查询参数的导出地址（需用 fetch + blob 下载，见自定义报表页） */
+    exportCsvQuery: (params: { type: string; from: string; to: string; projectId?: number }) => {
+      const q = new URLSearchParams({ type: params.type, from: params.from, to: params.to })
+      if (params.projectId != null) q.set('projectId', String(params.projectId))
+      return `/api/report/export/csv?${q.toString()}`
+    },
+  },
+
   paymentApply: {
     list: (params: any) => request({ url: '/payment-apply/list', method: 'GET', params }),
     page: (params: any) => request({ url: '/payment-apply/page', method: 'GET', params }),
@@ -315,11 +356,12 @@ supplier: {
     create: (data: any) => request({ url: '/payment-apply', method: 'POST', data }),
     update: (data: any) => request({ url: '/payment-apply', method: 'PUT', data }),
     delete: (id: number) => request({ url: `/payment-apply/${id}`, method: 'DELETE' }),
+    summary: (params?: any) => request({ url: '/payment-apply/summary', method: 'GET', params }),
     createLabor: (data: any) => request({ url: '/payment-apply/labor', method: 'POST', data }),
     createMaterial: (data: any) => request({ url: '/payment-apply/material', method: 'POST', data }),
     getByContract: (contractId: number) => request({ url: `/payment-apply/by-contract/${contractId}`, method: 'GET' }),
     submit: (id: number) => request({ url: `/payment-apply/${id}/submit`, method: 'POST' }),
-    approve: (params: any) => request({ url: `/payment-apply/${id}/approve`, method: 'POST', params }),
+    approve: (id: number, params: any) => request({ url: `/payment-apply/${id}/approve`, method: 'POST', params }),
     associateInvoice: (id: number, data: any) => request({ url: `/payment-apply/${id}/associate-invoice`, method: 'POST', data }),
   },
   

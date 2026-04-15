@@ -147,10 +147,6 @@ const loadData = async () => {
   }
 }
 
-onMounted(() => {
-  loadData()
-})
-
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const formRef = ref()
@@ -162,6 +158,7 @@ const form = reactive({
   phone: '',
   email: '',
   deptId: null as number | null,
+  departmentName: '',
   position: '',
   status: 1
 })
@@ -190,15 +187,17 @@ const loadRoleList = async () => {
   }
 }
 
+const rules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  realName: [{ required: true, message: '请输入真实姓名', trigger: 'blur' }]
+}
+
 onMounted(() => {
   loadData()
   loadDeptTree()
   loadRoleList()
 })
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur', message: '密码不能为空' }],
-  realName: [{ required: true, message: '请输入真实姓名', trigger: 'blur' }]
-}
 
 const handleReset = () => { filterForm.username = ''; filterForm.realName = ''; filterForm.status = null }
 const handleCreate = () => {

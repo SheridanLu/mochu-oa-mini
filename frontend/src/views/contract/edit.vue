@@ -175,13 +175,14 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { request } from '@/utils/request'
+import { api } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
 
 const query = route.query
 const isEdit = computed(() => !!query.id)
+const isExpenseContract = computed(() => route.query.expense === '1')
 
 const formRef = ref()
 const form = reactive({
@@ -215,26 +216,81 @@ const rules = {
   signDate: [{ required: true, message: '请选择签订日期', trigger: 'change' }]
 }
 
-const projectList = ref<any[]>([
-  { id: 1, projectName: 'XX项目一期' },
-  { id: 2, projectName: 'YY项目' }
-])
+const projectList = ref<any[]>([])
 
 const supplierList = ref<any[]>([
   { id: 1, supplierName: 'XXX供应商' },
   { id: 2, supplierName: 'YYY供应商' }
 ])
 
-const loadData = async () => {
-  if (query.id) {
-    try {
-      const res = await request<{ data: any }>({ url: `/contract/${query.id}`, method: 'GET' })
-      if (res.data) Object.assign(form, res.data)
-    } catch (e) { console.error('加载失败', e) }
+const loadProjects = async () => {
+  try {
+    const res: any = await api.project.list()
+    if (res.code === 200) projectList.value = res.data || []
+  } catch {
+    projectList.value = []
   }
 }
 
-onMounted(() => { loadData() })
+const loadData = async () => {
+  await loadProjects()
+  if (!query.id) return
+  const idNum = Number(query.id)
+  if (isExpenseContract.value) {
+    try {
+      const res: any = await api.contract.expense.get(idNum)
+      if (res.code !== 200 || !res.data) {
+        ElMessage.error(res.message || '加载支出合同失败')
+        return
+      }
+      const d = res.data
+      form.contractType = 2
+      form.contractNo = d.contractNo || ''
+      form.contractName = d.contractName || ''
+      form.projectId = d.projectId ?? null
+      form.projectName = d.projectName || ''
+      form.totalAmount = Number(d.totalAmountWithTax ?? d.totalAmount ?? 0)
+      form.taxRate = d.taxRate != null ? Number(d.taxRate) : 0.06
+      form.supplierId = d.supplierId ?? null
+      form.signDate = d.signDate || ''
+      form.startDate = d.startDate || ''
+      form.endDate = d.endDate || ''
+      form.paymentType = d.paymentType != null ? String(d.paymentType) : ''
+      form.remark = d.remark || ''
+    } catch (e: any) {
+      ElMessage.error(e.message || '加载失败')
+    }
+    return
+  }
+  try {
+    const res: any = await api.contract.income.get(idNum)
+    if (res.code !== 200 || !res.data) {
+      ElMessage.error(res.message || '加载收入合同失败')
+      return
+    }
+    const d = res.data
+    form.contractType = 1
+    form.contractNo = d.contractNo || ''
+    form.contractName = d.contractName || ''
+    form.projectId = d.projectId ?? null
+    form.projectName = d.projectName || ''
+    form.totalAmount = Number(d.totalAmountWithTax ?? d.totalAmount ?? 0)
+    form.taxRate = d.taxRate != null ? Number(d.taxRate) : 0.06
+    form.partyA = d.partyA || ''
+    form.partyB = d.partyB || ''
+    form.signDate = d.signDate || ''
+    form.startDate = d.startDate || ''
+    form.endDate = d.endDate || ''
+    form.paymentType = d.paymentType != null ? String(d.paymentType) : ''
+    form.remark = d.remark || ''
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载失败')
+  }
+}
+
+onMounted(() => {
+  loadData()
+})
 
 const handleBack = () => router.push('/contract')
 
@@ -243,14 +299,112 @@ const handleSubmit = async () => {
   if (!valid) return
 
   try {
-    if (isEdit.value) {
-      await request({ url: '/api/contract', method: 'PUT', data: form })
-    } else {
-      await request({ url: '/api/contract', method: 'POST', data: form })
+    if (isExpenseContract.value && query.id) {
+      const res: any = await api.contract.expense.update({
+        id: Number(query.id),
+        contractNo: form.contractNo,
+        contractName: form.contractName,
+        projectId: form.projectId,
+        projectName: form.projectName,
+        totalAmount: form.totalAmount,
+        totalAmountWithTax: form.totalAmount,
+        taxRate: form.taxRate,
+        supplierId: form.supplierId,
+        signDate: form.signDate,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        paymentType: form.paymentType ? Number(form.paymentType) : undefined,
+        remark: form.remark
+      })
+      if (res.code !== 200) {
+        ElMessage.error(res.message || '保存失败')
+        return
+      }
+      ElMessage.success('保存成功')
+      router.push('/contract')
+      return
     }
-    ElMessage.success('保存成功')
-    router.push('/contract')
-  } catch (e: any) { ElMessage.error(e.message || '保存失败') }
+    if (query.id && !isExpenseContract.value) {
+      const res: any = await api.contract.income.update({
+        id: Number(query.id),
+        contractType: 1,
+        contractNo: form.contractNo,
+        contractName: form.contractName,
+        projectId: form.projectId,
+        projectName: form.projectName,
+        totalAmount: form.totalAmount,
+        totalAmountWithTax: form.totalAmount,
+        taxRate: form.taxRate,
+        partyA: form.partyA,
+        partyB: form.partyB,
+        signDate: form.signDate,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        paymentType: form.paymentType ? Number(form.paymentType) : undefined,
+        remark: form.remark
+      })
+      if (res.code !== 200) {
+        ElMessage.error(res.message || '保存失败')
+        return
+      }
+      ElMessage.success('保存成功')
+      router.push('/contract')
+      return
+    }
+    if (!query.id && form.contractType === 2) {
+      const res: any = await api.contract.expense.create({
+        contractNo: form.contractNo,
+        contractName: form.contractName,
+        projectId: form.projectId,
+        projectName: form.projectName,
+        totalAmount: form.totalAmount,
+        totalAmountWithTax: form.totalAmount,
+        taxRate: form.taxRate,
+        supplierId: form.supplierId,
+        signDate: form.signDate,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        paymentType: form.paymentType ? Number(form.paymentType) : undefined,
+        remark: form.remark
+      })
+      if (res.code !== 200) {
+        ElMessage.error(res.message || '保存失败')
+        return
+      }
+      ElMessage.success('保存成功')
+      router.push('/contract')
+      return
+    }
+    if (!query.id && form.contractType === 1) {
+      const res: any = await api.contract.income.create({
+        contractType: 1,
+        contractNo: form.contractNo,
+        contractName: form.contractName,
+        projectId: form.projectId,
+        projectName: form.projectName,
+        totalAmount: form.totalAmount,
+        totalAmountWithTax: form.totalAmount,
+        taxRate: form.taxRate,
+        partyA: form.partyA,
+        partyB: form.partyB,
+        signDate: form.signDate,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        paymentType: form.paymentType ? Number(form.paymentType) : undefined,
+        remark: form.remark
+      })
+      if (res.code !== 200) {
+        ElMessage.error(res.message || '保存失败')
+        return
+      }
+      ElMessage.success('保存成功')
+      router.push('/contract')
+      return
+    }
+    ElMessage.warning('请选择合同类型并完善表单')
+  } catch (e: any) {
+    ElMessage.error(e.message || '保存失败')
+  }
 }
 
 const handleUploadSuccess = (res: any) => {

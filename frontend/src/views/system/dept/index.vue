@@ -242,9 +242,6 @@ const handleSubmit = async () => {
     submitLoading.value = false
   }
 }
-    loadDeptTree()
-  }
-}
 
 const handleDisable = async (data: any) => {
   try {
