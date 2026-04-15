@@ -101,16 +101,16 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="营业执照">
-              <el-upload action="/api/common/upload" list-type="file" :limit="1" :on-success="handleUploadSuccess">
+              <AttachmentUpload :limit="1" @uploaded="handleUploadSuccess">
                 <el-button>上传营业执照</el-button>
-              </el-upload>
+              </AttachmentUpload>
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="资质证书">
-              <el-upload action="/api/common/upload" list-type="file" :limit="5">
+              <AttachmentUpload :limit="30">
                 <el-button>上传资质证书</el-button>
-              </el-upload>
+              </AttachmentUpload>
             </el-form-item>
           </el-col>
         </el-row>
@@ -205,8 +205,8 @@ const handleSubmit = async () => {
   } catch (e: any) { ElMessage.error(e.message || '保存失败') }
 }
 
-const handleUploadSuccess = (res: any) => {
-  if (res.code === 200) form.businessLicense = res.data
+const handleUploadSuccess = (url: string, res: any) => {
+  if (res?.code === 200 && url) form.businessLicense = url
 }
 </script>
 

@@ -137,9 +137,13 @@
           <el-date-picker v-model="feedbackForm.estimatedDate" type="date" placeholder="选择预计回款时间" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
         <el-form-item label="上传附件">
-          <el-upload action="/api/v1/attachment/upload" multiple>
+          <AttachmentUpload
+            :limit="10"
+            :multiple="true"
+            @uploaded="handleFeedbackUploadSuccess"
+          >
             <el-button>点击上传</el-button>
-          </el-upload>
+          </AttachmentUpload>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -204,6 +208,9 @@ const handleSubmit = async () => {
   } catch (e: any) { ElMessage.error(e.message) }
 }
 const handleAddFeedback = () => ElMessage.info('添加反馈功能开发中')
+const handleFeedbackUploadSuccess = (url: string, res: any) => {
+  if (res?.code === 200 && url) feedbackForm.attachments.push(url)
+}
 
 onMounted(() => { fetchDetail() })
 </script>

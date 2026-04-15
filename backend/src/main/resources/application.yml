@@ -54,6 +54,20 @@ jwt:
   secret: mochu-oa-jwt-secret-key-2026-spring-boot-v3
   expiration: 2592000000  # 30天
 
+ocr:
+  tesseract:
+    enabled: false
+    # macOS(Homebrew) 常见路径: /opt/homebrew/share/tessdata
+    datapath: ""
+    # 相对路径图片会自动拼接此地址，如 /uploads/xx.jpg -> ${base-url}/uploads/xx.jpg
+    base-url: http://127.0.0.1:9090
+    language: chi_sim+eng
+    psm: 6
+    oem: 1
+    timeout-seconds: 5
+    cache-ttl-seconds: 600
+    metrics-log-interval: 50
+
 knife4j:
   enable: true
   setting:

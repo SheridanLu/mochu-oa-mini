@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS `biz_contract_template` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `template_name` VARCHAR(120) NOT NULL COMMENT '模板名称',
+  `contract_type` TINYINT NOT NULL COMMENT '合同类型:1收入 2支出',
+  `template_content` LONGTEXT NOT NULL COMMENT '模板正文',
+  `template_version` INT NOT NULL DEFAULT 1 COMMENT '模板版本',
+  `content_hash` VARCHAR(64) DEFAULT NULL COMMENT '模板正文SHA-256',
+  `field_keys` VARCHAR(2000) DEFAULT NULL COMMENT '识别字段列表(逗号分隔)',
+  `source_file_name` VARCHAR(255) DEFAULT NULL COMMENT '导入文件名',
+  `source_file_path` VARCHAR(500) DEFAULT NULL COMMENT '导入文件路径',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态:1启用 0停用',
+  `remark` VARCHAR(500) DEFAULT NULL COMMENT '备注',
+  `created_by` BIGINT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` BIGINT DEFAULT NULL,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` TINYINT DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_contract_type` (`contract_type`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='合同模板表';

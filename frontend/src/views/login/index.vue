@@ -239,7 +239,8 @@ const handleLogin = async () => {
         realName: res.data?.realName || '',
         avatar: res.data?.avatar || '',
         department: res.data?.departmentName || '',
-        roles: res.data?.roles || []
+        roles: res.data?.roles || [],
+        mustChangePassword: !!res.data?.mustChangePassword
       })
       ElMessage.success('登录成功')
       router.push('/home')

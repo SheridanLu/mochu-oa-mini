@@ -86,6 +86,7 @@
             <span>审批中心</span>
           </template>
           <el-menu-item index="/approval">我的审批</el-menu-item>
+          <el-menu-item index="/approval/flow">流程管理</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="/system">
           <template #title>
@@ -126,6 +127,7 @@
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">个人中心</el-dropdown-item>
                 <el-dropdown-item command="settings">系统设置</el-dropdown-item>
+                <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
                 <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -137,11 +139,40 @@
       </el-main>
     </el-container>
   </el-container>
+
+  <el-dialog
+    v-model="passwordDialogVisible"
+    title="修改登录密码"
+    width="480px"
+    destroy-on-close
+    :close-on-click-modal="!mustForceChangePassword"
+    :close-on-press-escape="!mustForceChangePassword"
+    :show-close="!mustForceChangePassword"
+  >
+    <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-width="110px">
+      <el-form-item label="旧密码" prop="oldPassword">
+        <el-input v-model="passwordForm.oldPassword" type="password" show-password placeholder="请输入旧密码" />
+      </el-form-item>
+      <el-form-item label="新密码" prop="newPassword">
+        <el-input v-model="passwordForm.newPassword" type="password" show-password placeholder="请输入新密码" />
+      </el-form-item>
+      <el-form-item label="确认新密码" prop="confirmPassword">
+        <el-input v-model="passwordForm.confirmPassword" type="password" show-password placeholder="请再次输入新密码" />
+      </el-form-item>
+      <div class="pwd-tip">密码要求：8-20位，且必须包含大写字母、小写字母、数字和特殊字符。</div>
+    </el-form>
+    <template #footer>
+      <el-button v-if="!mustForceChangePassword" @click="passwordDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="passwordSubmitting" @click="handleChangePassword">确认修改</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useMenuStore } from '@/stores/menu'
 import { api } from '@/api'
@@ -154,8 +185,47 @@ const menuStore = useMenuStore()
 
 const isCollapse = ref(false)
 const todoBadge = ref(0)
+const passwordDialogVisible = ref(false)
+const passwordSubmitting = ref(false)
+const passwordFormRef = ref<FormInstance>()
+const passwordForm = ref({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[~!@#$%^&*()_+\-={}\[\]|:;"'<>,.?/]).{8,20}$/
+const passwordRules: FormRules = {
+  oldPassword: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (!passwordPattern.test(value || '')) {
+          callback(new Error('密码必须8-20位，且包含大小写字母、数字和特殊字符'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认新密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (value !== passwordForm.value.newPassword) {
+          callback(new Error('两次输入的新密码不一致'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ]
+}
 const activeMenu = computed(() => route.path)
 const currentRoute = computed(() => route.meta.title as string)
+const mustForceChangePassword = computed(() => !!userStore.userInfo?.mustChangePassword)
 const displayName = computed(() => {
   const realName = userStore.userInfo?.realName || ''
   const username = userStore.userInfo?.username || ''
@@ -199,6 +269,31 @@ const handleCommand = (command: string) => {
     router.push('/system/announcement')
   } else if (command === 'profile') {
     router.push('/home')
+  } else if (command === 'changePassword') {
+    passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
+    passwordDialogVisible.value = true
+  }
+}
+
+const handleChangePassword = async () => {
+  const valid = await passwordFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  passwordSubmitting.value = true
+  try {
+    await api.auth.changePassword({
+      oldPassword: passwordForm.value.oldPassword,
+      newPassword: passwordForm.value.newPassword,
+      confirmPassword: passwordForm.value.confirmPassword
+    })
+    ElMessage.success('密码修改成功，请重新登录')
+    passwordDialogVisible.value = false
+    userStore.logout()
+    menuStore.clearMenus()
+    router.replace('/login')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '修改密码失败')
+  } finally {
+    passwordSubmitting.value = false
   }
 }
 
@@ -226,8 +321,13 @@ const ensureUserInfo = async () => {
         realName: res.data.realName || '',
         avatar: res.data.avatar || '',
         department: res.data.departmentName || '',
-        roles: []
+        roles: [],
+        mustChangePassword: userStore.userInfo?.mustChangePassword || false
       })
+      if (userStore.userInfo?.mustChangePassword) {
+        passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
+        passwordDialogVisible.value = true
+      }
       return
     }
   } catch {
@@ -331,5 +431,12 @@ onUnmounted(() => {
 .el-main {
   background: #f5f7fa;
   padding: 20px;
+}
+
+.pwd-tip {
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-left: 110px;
 }
 </style>

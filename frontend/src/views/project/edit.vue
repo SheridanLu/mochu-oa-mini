@@ -144,9 +144,9 @@
         </el-form-item>
 
         <el-form-item label="附件">
-          <el-upload action="/api/common/upload" list-type="file" :limit="5" :on-success="handleUploadSuccess">
+          <AttachmentUpload :limit="30" @uploaded="handleUploadSuccess">
             <el-button type="primary">上传附件</el-button>
-          </el-upload>
+          </AttachmentUpload>
         </el-form-item>
       </el-form>
     </el-card>
@@ -260,10 +260,8 @@ const handleSubmit = async () => {
   }
 }
 
-const handleUploadSuccess = (res: any) => {
-  if (res.code === 200) {
-    form.attachments.push(res.data)
-  }
+const handleUploadSuccess = (url: string, res: any) => {
+  if (res?.code === 200 && url) form.attachments.push(url)
 }
 </script>
 

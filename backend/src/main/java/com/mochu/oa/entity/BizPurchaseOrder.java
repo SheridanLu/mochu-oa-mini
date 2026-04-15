@@ -50,4 +50,7 @@ public class BizPurchaseOrder extends BaseEntity {
     
     @TableField("submitted_at")
     private java.time.LocalDateTime submittedAt;
+
+    @TableField(exist = false)
+    private java.util.List<BizPurchaseOrderItem> items;
 }

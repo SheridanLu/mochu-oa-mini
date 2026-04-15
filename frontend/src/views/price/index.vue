@@ -236,9 +236,16 @@
         </el-alert>
         <el-button type="primary" link style="margin-top: 10px" @click="downloadTemplate">下载模板</el-button>
       </div>
-      <el-upload action="/api/common/upload" :auto-upload="false" :on-change="handleFileChange" :file-list="importFileList" accept=".xlsx,.xls">
+      <AttachmentUpload
+        :auto-upload="false"
+        :on-change="handleFileChange"
+        :file-list="importFileList"
+        :limit="1"
+        accept=".xlsx,.xls"
+        :allowed-exts="['.xls', '.xlsx']"
+      >
         <el-button type="primary">选择文件</el-button>
-      </el-upload>
+      </AttachmentUpload>
       <template #footer>
         <el-button @click="importDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleImportConfirm">开始导入</el-button>
@@ -248,7 +255,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules, UploadFile } from 'element-plus'
 

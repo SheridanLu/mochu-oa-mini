@@ -8,6 +8,7 @@ interface UserInfo {
   avatar: string
   department: string
   roles: string[]
+  mustChangePassword?: boolean
 }
 
 export const useUserStore = defineStore('user', () => {

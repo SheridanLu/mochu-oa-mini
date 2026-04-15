@@ -9,7 +9,7 @@
         </el-breadcrumb>
       </div>
       <div class="header-right">
-        <el-button type="primary" @click="handleImport">从合同附件生成草稿</el-button>
+        <el-button type="primary" @click="openGenerateDialog">从收入合同附件生成采购清单</el-button>
         <el-button type="primary" @click="handleCreate">新建采购清单</el-button>
         <el-button @click="handleRefresh">刷新</el-button>
       </div>
@@ -80,6 +80,29 @@
         <el-pagination v-model:current-page="pagination.page" v-model:page-size="pagination.size" :page-sizes="[20, 50, 100]" :total="pagination.total" layout="total, sizes, prev, pager, next, jumper" />
       </div>
     </el-card>
+
+    <el-dialog v-model="generateDialogVisible" title="从收入合同附件生成采购清单" width="520px">
+      <el-form :model="generateForm" label-width="120px">
+        <el-form-item label="收入合同" required>
+          <el-select v-model="generateForm.contractId" filterable placeholder="请选择收入合同" style="width: 100%">
+            <el-option
+              v-for="item in incomeContracts"
+              :key="item.id"
+              :label="`${item.contractNo || '-'} / ${item.contractName || '-'}`"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="自动提交审批">
+          <el-switch v-model="generateForm.autoSubmit" />
+          <span style="margin-left: 8px; color: #909399; font-size: 12px">开启后自动下发预算员待办</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="generateDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="generating" @click="handleGenerateFromIncome">生成采购清单</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -92,9 +115,16 @@ import { api } from '@/api'
 const router = useRouter()
 
 const loading = ref(false)
+const generating = ref(false)
 const filterForm = reactive({ projectId: '', contractNo: '', status: '', sourceType: '' })
 const pagination = reactive({ page: 1, size: 20, total: 0 })
 const tableData = ref<any[]>([])
+const generateDialogVisible = ref(false)
+const incomeContracts = ref<any[]>([])
+const generateForm = reactive({
+  contractId: null as number | null,
+  autoSubmit: true
+})
 
 const canCreate = computed(() => {
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
@@ -127,9 +157,44 @@ const handleReset = () => { Object.assign(filterForm, { projectId: '', contractN
 const handleRefresh = () => { fetchList(); ElMessage.success('刷新成功') }
 
 const handleCreate = () => router.push('/purchase/edit')
-const handleImport = () => router.push('/purchase/import')
+const openGenerateDialog = async () => {
+  generateDialogVisible.value = true
+  if (incomeContracts.value.length) return
+  try {
+    const res: any = await api.contract.income.list()
+    incomeContracts.value = res.code === 200 ? (res.data || []) : []
+  } catch {
+    incomeContracts.value = []
+  }
+}
 const handleView = (row: any) => router.push(`/purchase/edit?id=${row.id}&mode=view`)
 const handleEdit = (row: any) => router.push(`/purchase/edit?id=${row.id}`)
+
+const handleGenerateFromIncome = async () => {
+  if (!generateForm.contractId) {
+    ElMessage.warning('请先选择收入合同')
+    return
+  }
+  generating.value = true
+  try {
+    const res: any = await api.purchase.generateFromIncomeContract({
+      contractId: generateForm.contractId,
+      autoSubmit: generateForm.autoSubmit
+    })
+    if (res.code !== 200) {
+      ElMessage.error(res.message || '生成失败')
+      return
+    }
+    ElMessage.success(`采购清单已生成${res.data?.purchaseNo ? `：${res.data.purchaseNo}` : ''}`)
+    generateDialogVisible.value = false
+    generateForm.contractId = null
+    fetchList()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e.message || '生成失败')
+  } finally {
+    generating.value = false
+  }
+}
 
 const handleSubmit = async (row: any) => {
   try {

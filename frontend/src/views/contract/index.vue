@@ -9,6 +9,7 @@
         <el-button @click="handleRefresh">
           <el-icon><Refresh /></el-icon>刷新
         </el-button>
+        <el-button @click="router.push('/contract/template')">模板管理</el-button>
         <el-button v-if="canCreateContract" type="primary" @click="handleCreate">
           <el-icon><Plus /></el-icon>新建合同
         </el-button>
@@ -55,6 +56,11 @@
             <el-option label="已终止" value="7" />
           </el-select>
         </el-form-item>
+        <el-form-item v-if="filterForm.contractType === '2'" label="支出分类">
+          <el-select v-model="filterForm.expenseCategory" placeholder="全部分类" clearable style="width: 160px" @change="handleSearch">
+            <el-option v-for="item in expenseCategoryOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="handleReset">重置</el-button>
@@ -68,6 +74,9 @@
         <el-table-column prop="projectName" label="关联项目" min-width="140" />
         <el-table-column prop="contractType" label="合同类型" width="100" align="center">
           <template #default="{ row }">{{ row.contractType === 2 ? '支出合同' : '收入合同' }}</template>
+        </el-table-column>
+        <el-table-column prop="expenseContractCategory" label="支出合同分类" min-width="130">
+          <template #default="{ row }">{{ expenseCategoryLabel(row.expenseContractCategory) }}</template>
         </el-table-column>
         <el-table-column prop="totalAmount" label="合同金额" width="130" align="right">
           <template #default="{ row }">{{ formatAmount(row.totalAmountWithTax ?? row.totalAmount) }}</template>
@@ -117,11 +126,13 @@ const filterForm = reactive({
   contractType: '1' as '1' | '2',
   contractName: '',
   projectId: undefined as number | undefined,
-  status: ''
+  status: '',
+  expenseCategory: ''
 })
 const pagination = reactive({ page: 1, size: 20, total: 0 })
 const tableData = ref<any[]>([])
 const projectOptions = ref<any[]>([])
+const expenseCategoryOptions = ref<Array<{ value: string; label: string }>>([])
 const typeSwitched = ref(false)
 let contractNameTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -136,6 +147,11 @@ const formatAmount = (v: any) => {
   const n = Number(v)
   if (!Number.isFinite(n)) return '—'
   return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(n)
+}
+const expenseCategoryLabel = (v: string) => {
+  const map = Object.fromEntries(expenseCategoryOptions.value.map((x) => [x.value, x.label]))
+  if (!v) return '—'
+  return map[v] || v
 }
 
 const canEdit = (row: any) => row.status === 1
@@ -156,6 +172,7 @@ const syncQuery = () => {
   if (filterForm.contractName) q.name = filterForm.contractName
   if (filterForm.projectId != null) q.projectId = String(filterForm.projectId)
   if (filterForm.status) q.status = filterForm.status
+  if (filterForm.contractType === '2' && filterForm.expenseCategory) q.expenseCategory = filterForm.expenseCategory
   const current = route.query
   const keys = new Set([...Object.keys(q), ...Object.keys(current)])
   let changed = false
@@ -188,6 +205,15 @@ const loadProjects = async () => {
   }
 }
 
+const loadExpenseCategories = async () => {
+  try {
+    const res: any = await api.contract.expense.categories()
+    expenseCategoryOptions.value = res.code === 200 ? (res.data || []) : []
+  } catch {
+    expenseCategoryOptions.value = []
+  }
+}
+
 const fetchList = async () => {
   loading.value = true
   syncQuery()
@@ -197,7 +223,8 @@ const fetchList = async () => {
       pageSize: pagination.size,
       contractName: filterForm.contractName || undefined,
       projectId: filterForm.projectId,
-      status: filterForm.status ? parseInt(filterForm.status, 10) : undefined
+      status: filterForm.status ? parseInt(filterForm.status, 10) : undefined,
+      expenseCategory: filterForm.contractType === '2' ? (filterForm.expenseCategory || undefined) : undefined
     }
     if (filterForm.contractType === '2') {
       const res: any = await api.contract.expense.page(params)
@@ -208,7 +235,7 @@ const fetchList = async () => {
         return
       }
       const page = res.data
-      tableData.value = (page?.records || []).map((r: any) => ({ ...r, contractType: 2 }))
+      tableData.value = (page?.records || []).map((r: any) => ({ ...r, expenseContractCategory: r.contractType, contractType: 2 }))
       pagination.total = page?.total ?? 0
     } else {
       const res: any = await api.contract.income.page(params)
@@ -242,12 +269,13 @@ const handleSearch = () => {
 const handleContractTypeChange = () => {
   // 切换合同类型时清理可能不适配的筛选条件后再查询
   filterForm.status = ''
+  filterForm.expenseCategory = ''
   typeSwitched.value = true
   pagination.page = 1
   fetchList()
 }
 const handleReset = () => {
-  Object.assign(filterForm, { contractType: '1', contractName: '', projectId: undefined, status: '' })
+  Object.assign(filterForm, { contractType: '1', contractName: '', projectId: undefined, status: '', expenseCategory: '' })
   pagination.page = 1
   fetchList()
 }
@@ -293,6 +321,9 @@ onMounted(() => {
   if (typeof q.status === 'string') {
     filterForm.status = q.status
   }
+  if (typeof q.expenseCategory === 'string') {
+    filterForm.expenseCategory = q.expenseCategory
+  }
   if (typeof q.page === 'string') {
     const p = Number(q.page)
     if (Number.isFinite(p) && p > 0) pagination.page = p
@@ -302,6 +333,7 @@ onMounted(() => {
     if (Number.isFinite(s) && s > 0) pagination.size = s
   }
   loadProjects()
+  loadExpenseCategories()
   fetchList()
 })
 

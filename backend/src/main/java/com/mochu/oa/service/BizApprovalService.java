@@ -40,4 +40,8 @@ public interface BizApprovalService extends IService<BizApprovalInstance> {
     void initFlowDefinitions();
     
     BizApprovalDef getFlowDef(String bizType);
+
+    List<BizApprovalDef> listFlowDefs();
+
+    void saveFlowDef(BizApprovalDef def);
 }

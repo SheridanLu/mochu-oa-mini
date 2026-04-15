@@ -345,6 +345,48 @@ public class BizApprovalServiceImpl extends ServiceImpl<BizApprovalInstanceMappe
                         .eq(BizApprovalDef::getBizType, bizType)
                         .eq(BizApprovalDef::getStatus, 1));
     }
+
+    @Override
+    public List<BizApprovalDef> listFlowDefs() {
+        return bizApprovalDefMapper.selectList(new LambdaQueryWrapper<BizApprovalDef>()
+                .orderByAsc(BizApprovalDef::getBizType));
+    }
+
+    @Override
+    @Transactional
+    public void saveFlowDef(BizApprovalDef def) {
+        if (def == null || !StringUtils.hasText(def.getBizType())) {
+            throw new RuntimeException("bizType不能为空");
+        }
+        if (!StringUtils.hasText(def.getBizName())) {
+            throw new RuntimeException("bizName不能为空");
+        }
+        if (!StringUtils.hasText(def.getFlowJson())) {
+            throw new RuntimeException("flowJson不能为空");
+        }
+        List<Map<String, Object>> nodes = parseFlowNodes(def.getFlowJson());
+        if (nodes.isEmpty()) {
+            throw new RuntimeException("flowJson无有效节点");
+        }
+        String bizType = def.getBizType().trim().toUpperCase(Locale.ROOT);
+        BizApprovalDef existing = bizApprovalDefMapper.selectOne(
+                new LambdaQueryWrapper<BizApprovalDef>().eq(BizApprovalDef::getBizType, bizType));
+        if (existing == null) {
+            BizApprovalDef insert = new BizApprovalDef();
+            insert.setBizType(bizType);
+            insert.setBizName(def.getBizName().trim());
+            insert.setFlowJson(def.getFlowJson());
+            insert.setStatus(def.getStatus() == null ? 1 : def.getStatus());
+            insert.setVersion(def.getVersion() == null ? 1 : def.getVersion());
+            bizApprovalDefMapper.insert(insert);
+        } else {
+            existing.setBizName(def.getBizName().trim());
+            existing.setFlowJson(def.getFlowJson());
+            existing.setStatus(def.getStatus() == null ? existing.getStatus() : def.getStatus());
+            existing.setVersion((existing.getVersion() == null ? 1 : existing.getVersion()) + 1);
+            bizApprovalDefMapper.updateById(existing);
+        }
+    }
     
     private List<Map<String, Object>> parseFlowNodes(String flowJson) {
         try {

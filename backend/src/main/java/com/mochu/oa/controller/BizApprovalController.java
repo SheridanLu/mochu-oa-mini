@@ -120,6 +120,19 @@ public class BizApprovalController {
     public Result<BizApprovalDef> getFlowDef(@PathVariable String bizType) {
         return Result.success(bizApprovalService.getFlowDef(bizType));
     }
+
+    @GetMapping("/def/list")
+    @Operation(summary = "获取流程定义列表")
+    public Result<List<BizApprovalDef>> listFlowDefs() {
+        return Result.success(bizApprovalService.listFlowDefs());
+    }
+
+    @PostMapping("/def/save")
+    @Operation(summary = "保存流程定义")
+    public Result<Void> saveFlowDef(@RequestBody BizApprovalDef def) {
+        bizApprovalService.saveFlowDef(def);
+        return Result.success(null);
+    }
     
     @PostMapping("/def/init")
     @Operation(summary = "初始化流程定义")

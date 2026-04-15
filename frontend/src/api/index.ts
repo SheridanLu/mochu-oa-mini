@@ -47,6 +47,8 @@ export const api = {
     login: (data: any) => request({ url: '/auth/login', method: 'POST', data }),
     sendSms: (data: any) => request({ url: '/auth/send-sms', method: 'POST', data }),
     resetPassword: (data: any) => request({ url: '/auth/reset-password', method: 'POST', data }),
+    changePassword: (data: { oldPassword: string; newPassword: string; confirmPassword: string }) =>
+      request({ url: '/auth/change-password', method: 'POST', data }),
     getUserInfo: () => request({ url: '/auth/info', method: 'GET' }),
     logout: () => request({ url: '/auth/logout', method: 'POST' }),
   },
@@ -65,8 +67,27 @@ export const api = {
   },
   
   contract: {
+    template: {
+      list: (params?: { contractType?: number; onlyEnabled?: number }) =>
+        request({ url: '/contract/template/list', method: 'GET', params }),
+      importDocx: (data: FormData) =>
+        request({ url: '/contract/template/import-docx', method: 'POST', data, headers: { 'Content-Type': 'multipart/form-data' } }),
+      update: (data: any) => request({ url: '/contract/template', method: 'PUT', data }),
+      delete: (id: number) => request({ url: `/contract/template/${id}`, method: 'DELETE' }),
+      draft: (templateId: number, params?: { projectId?: number; supplierId?: number }) =>
+        request({ url: `/contract/template/draft/${templateId}`, method: 'GET', params }),
+    },
     income: {
       list: () => request({ url: '/contract/income/list', method: 'GET' }),
+      importGlodon: (data: FormData) =>
+        request({ url: '/contract/income/import-glodon', method: 'POST', data, headers: { 'Content-Type': 'multipart/form-data' } }),
+      createPurchaseDraft: (data: {
+        projectId: number
+        projectName?: string
+        contractNo?: string
+        contractName?: string
+        rows: any[]
+      }) => request({ url: '/contract/income/create-purchase-draft', method: 'POST', data }),
       page: (params: any) => request({ url: '/contract/income/page', method: 'GET', params }),
       get: (id: number) => request({ url: `/contract/income/${id}`, method: 'GET' }),
       create: (data: any) => request({ url: '/contract/income', method: 'POST', data }),
@@ -75,12 +96,16 @@ export const api = {
       submit: (id: number) => request({ url: `/contract/income/${id}/submit`, method: 'POST' }),
     },
     expense: {
+      categories: () => request({ url: '/contract/expense/categories', method: 'GET' }),
+      importItems: (data: FormData) =>
+        request({ url: '/contract/expense/import-items', method: 'POST', data, headers: { 'Content-Type': 'multipart/form-data' } }),
       list: () => request({ url: '/contract/expense/list', method: 'GET' }),
       page: (params: any) => request({ url: '/contract/expense/page', method: 'GET', params }),
       get: (id: number) => request({ url: `/contract/expense/${id}`, method: 'GET' }),
       create: (data: any) => request({ url: '/contract/expense', method: 'POST', data }),
       update: (data: any) => request({ url: '/contract/expense', method: 'PUT', data }),
       delete: (id: number) => request({ url: `/contract/expense/${id}`, method: 'DELETE' }),
+      generatePrintFile: (data: any) => request({ url: '/contract/expense/print/generate', method: 'POST', data }),
     },
   },
   
@@ -150,6 +175,11 @@ export const api = {
     get: (id: number) => request({ url: `/purchase/${id}`, method: 'GET' }),
     create: (data: any) => request({ url: '/purchase', method: 'POST', data }),
     update: (data: any) => request({ url: '/purchase', method: 'PUT', data }),
+    generateFromIncomeContract: (data: { contractId: number; autoSubmit?: boolean }) =>
+      request({ url: '/purchase/generate-from-income-contract', method: 'POST', data }),
+    importTemplateQuery: () => '/api/purchase/import-template',
+    importExcel: (data: FormData) =>
+      request({ url: '/purchase/import-excel', method: 'POST', data, headers: { 'Content-Type': 'multipart/form-data' } }),
     delete: (id: number) => request({ url: `/purchase/${id}`, method: 'DELETE' }),
     submit: (id: number) => request({ url: `/purchase/${id}/submit`, method: 'POST' }),
     price: {
@@ -215,6 +245,10 @@ supplier: {
     getProgress: (id: number) => request({ url: `/gantt/${id}/progress`, method: 'GET' }),
     updateProgress: (id: number, data: any) => request({ url: `/gantt/${id}/progress`, method: 'PUT', data }),
     getIncomeSplit: (contractId: number) => request({ url: `/gantt/income-split/${contractId}`, method: 'GET' }),
+    validateTaskPhotos: (data: { ganttId?: number; taskId?: number; handlerId?: number; taskName: string; progress: number; photos: string[] }) =>
+      request({ url: '/gantt/task-photo-validate', method: 'POST', data }),
+    notifyHiddenWorkPhotoUploaded: (data: { ganttId: number; projectId: number; taskId: number; taskName: string; photoUrl: string; fallbackHandlerId?: number }) =>
+      request({ url: '/gantt/hidden-work/photo-uploaded', method: 'POST', data }),
   },
   
   /** 审批待办（后端：/api/approval/todo） */
@@ -228,6 +262,9 @@ supplier: {
     history: (instanceId: number) => request({ url: `/approval/${instanceId}/history`, method: 'GET' }),
     delegate: (instanceId: number, params: { fromUserId: number; toUserId: number; opinion?: string }) =>
       request({ url: `/approval/${instanceId}/delegate`, method: 'POST', params }),
+    flowDefs: () => request({ url: '/approval/def/list', method: 'GET' }),
+    saveFlowDef: (data: any) => request({ url: '/approval/def/save', method: 'POST', data }),
+    initFlowDefs: () => request({ url: '/approval/def/init', method: 'POST' }),
   },
   
   announcement: {

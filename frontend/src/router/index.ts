@@ -43,6 +43,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '合同管理' }
       },
       {
+        path: '/contract/template',
+        name: 'ContractTemplate',
+        component: () => import('@/views/contract/template.vue'),
+        meta: { title: '合同模板管理' }
+      },
+      {
         path: '/contract/create',
         name: 'ContractCreate',
         component: () => import('@/views/contract/edit.vue'),
@@ -243,6 +249,12 @@ const routes: RouteRecordRaw[] = [
         name: 'Approval',
         component: () => import('@/views/approval/index.vue'),
         meta: { title: '审批中心' }
+      },
+      {
+        path: '/approval/flow',
+        name: 'ApprovalFlow',
+        component: () => import('@/views/approval/flow.vue'),
+        meta: { title: '流程管理' }
       },
       {
         path: '/system',

@@ -27,4 +27,7 @@ public class LoginVO {
     
     @Schema(description = "部门名称")
     private String departmentName;
+
+    @Schema(description = "是否必须修改密码")
+    private Boolean mustChangePassword;
 }

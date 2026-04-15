@@ -59,9 +59,9 @@
           <el-input v-model='form.remark' type='textarea' :rows='3' placeholder='请输入事由说明' />
         </el-form-item>
         <el-form-item label='附件'>
-          <el-upload action='/api/common/upload' list-type='file' :limit='5'>
+          <AttachmentUpload :limit='30' @uploaded='handleUploadSuccess'>
             <el-button type='primary'>上传附件</el-button>
-          </el-upload>
+          </AttachmentUpload>
         </el-form-item>
       </el-form>
     </el-card>
@@ -87,7 +87,8 @@ const form = reactive({
   expenseType: '',
   totalAmount: 0,
   expenseDate: '',
-  remark: ''
+  remark: '',
+  attachments: [] as string[]
 })
 
 const rules = {
@@ -127,6 +128,10 @@ const loadDetail = async () => {
   } catch (e: any) {
     ElMessage.error(e.message || '加载报销单失败')
   }
+}
+
+const handleUploadSuccess = (url: string, res: any) => {
+  if (res?.code === 200 && url) form.attachments.push(url)
 }
 
 onMounted(() => {
