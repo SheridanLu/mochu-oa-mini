@@ -10,7 +10,10 @@ const service = axios.create({
 service.interceptors.request.use(
   (config) => {
     const rawToken = localStorage.getItem('token')
-    const token = (rawToken || '').trim().replace(/^"+|"+$/g, '')
+    const token = (rawToken || '')
+      .trim()
+      .replace(/^"+|"+$/g, '')
+      .replace(/^Bearer\s+/i, '')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }

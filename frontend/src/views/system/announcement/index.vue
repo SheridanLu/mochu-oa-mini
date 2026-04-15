@@ -227,6 +227,10 @@ function pickUploadData(response: any) {
   return response?.data ?? response
 }
 
+function getErrorMessage(error: any, fallback: string) {
+  return error?.response?.data?.message || error?.message || fallback
+}
+
 const loading = ref(false)
 const tableData = ref<any[]>([])
 const filterForm = reactive({ title: '', status: '', dateRange: [] as string[] })
@@ -370,7 +374,7 @@ const handleEdit = async (row: any) => {
       formDialogVisible.value = true
     }
   } catch (e: any) {
-    ElMessage.error(e?.message || '获取详情失败')
+    ElMessage.error(getErrorMessage(e, '获取详情失败'))
   }
 }
 
@@ -415,7 +419,7 @@ const handleSaveDraft = async () => {
     formDialogVisible.value = false
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e?.message || '保存失败')
+    ElMessage.error(getErrorMessage(e, '保存失败'))
   } finally {
     saveLoading.value = false
   }
@@ -450,7 +454,7 @@ const handleSubmitForm = async () => {
     formDialogVisible.value = false
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e?.message || '提交审批失败')
+    ElMessage.error(getErrorMessage(e, '提交审批失败'))
   } finally {
     submitLoading.value = false
   }
@@ -462,7 +466,7 @@ const handleSubmit = async (row: any) => {
     ElMessage.success('提交审批成功')
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e?.message || '提交失败')
+    ElMessage.error(getErrorMessage(e, '提交失败'))
   }
 }
 
@@ -472,7 +476,7 @@ const handlePublish = async (row: any) => {
     ElMessage.success('发布成功')
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e?.message || '发布失败')
+    ElMessage.error(getErrorMessage(e, '发布失败'))
   }
 }
 
@@ -482,7 +486,7 @@ const handleOffline = async (row: any) => {
     ElMessage.success('已下线')
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e?.message || '操作失败')
+    ElMessage.error(getErrorMessage(e, '操作失败'))
   }
 }
 
@@ -499,7 +503,7 @@ const handleDeleteConfirm = async () => {
     deleteDialogVisible.value = false
     fetchList()
   } catch (e: any) {
-    ElMessage.error(e?.message || '删除失败')
+    ElMessage.error(getErrorMessage(e, '删除失败'))
   } finally {
     deleteLoading.value = false
   }
