@@ -155,7 +155,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatAmount } from '../../../utils/format'
-import api from '../../../api'
+import { api } from '@/api'
 
 const route = useRoute()
 const router = useRouter()

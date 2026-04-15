@@ -124,7 +124,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import api from '../../../api'
+import { api } from '@/api'
 
 const loading = ref(false)
 const tableData = ref<any[]>([])

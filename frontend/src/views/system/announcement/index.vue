@@ -200,7 +200,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { formatDateTime } from '../../../utils/format'
-import api from '../../../api'
+import { api } from '@/api'
 
 const STORAGE_KEY = 'announcement_'
 

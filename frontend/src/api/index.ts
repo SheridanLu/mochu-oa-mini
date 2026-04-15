@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { AxiosRequestConfig } from 'axios'
+import { ElMessage } from 'element-plus'
 
 const service = axios.create({
   baseURL: '/api',
@@ -21,8 +22,11 @@ service.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
+      ElMessage.error('登录已过期，请重新登录')
       localStorage.removeItem('token')
       window.location.href = '/login'
+    } else if (error.response?.status === 403) {
+      ElMessage.error('没有权限或登录已失效，请重新登录')
     }
     return Promise.reject(error)
   }
@@ -225,8 +229,8 @@ supplier: {
   announcement: {
     list: (params: any) => request({ url: '/system/announcement/list', method: 'GET', params }),
     get: (id: number) => request({ url: `/system/announcement/${id}`, method: 'GET' }),
-    create: (data: any) => request({ url: '/api/system/announcement', method: 'POST', data }),
-    update: (data: any) => request({ url: '/api/system/announcement', method: 'PUT', data }),
+    create: (data: any) => request({ url: '/system/announcement', method: 'POST', data }),
+    update: (data: any) => request({ url: '/system/announcement', method: 'PUT', data }),
     delete: (id: number) => request({ url: `/system/announcement/${id}`, method: 'DELETE' }),
     submit: (id: number) => request({ url: `/system/announcement/${id}/submit`, method: 'POST' }),
     publish: (id: number) => request({ url: `/system/announcement/${id}/publish`, method: 'POST' }),
@@ -237,8 +241,8 @@ supplier: {
   company: {
     search: (params: any) => request({ url: '/company/search', method: 'GET', params }),
     get: (id: number) => request({ url: `/company/${id}`, method: 'GET' }),
-    create: (data: any) => request({ url: '/api/company', method: 'POST', data }),
-    update: (data: any) => request({ url: '/api/company', method: 'PUT', data }),
+    create: (data: any) => request({ url: '/company', method: 'POST', data }),
+    update: (data: any) => request({ url: '/company', method: 'PUT', data }),
   },
   
   invoice: {
@@ -367,31 +371,34 @@ supplier: {
     associateInvoice: (id: number, data: any) => request({ url: `/payment-apply/${id}/associate-invoice`, method: 'POST', data }),
   },
   
-system: {
+  system: {
+    menu: {
+      tree: () => request({ url: '/system/menu/tree', method: 'GET' }),
+    },
     user: {
-      list: (params?: any) => request({ url: '/api/system/user/list', method: 'GET', params }),
-      get: (id: number) => request({ url: `/api/system/user/${id}`, method: 'GET' }),
-      create: (data: any) => request({ url: '/api/system/user', method: 'POST', data }),
-      update: (data: any) => request({ url: '/api/system/user', method: 'PUT', data }),
-      delete: (id: number) => request({ url: `/api/system/user/${id}`, method: 'DELETE' }),
-      updateRoles: (id: number, data: any) => request({ url: `/api/system/user/${id}/roles`, method: 'PUT', data }),
+      list: (params?: any) => request({ url: '/system/user/list', method: 'GET', params }),
+      get: (id: number) => request({ url: `/system/user/${id}`, method: 'GET' }),
+      create: (data: any) => request({ url: '/system/user', method: 'POST', data }),
+      update: (data: any) => request({ url: '/system/user', method: 'PUT', data }),
+      delete: (id: number) => request({ url: `/system/user/${id}`, method: 'DELETE' }),
+      updateRoles: (id: number, data: any) => request({ url: `/system/user/${id}/roles`, method: 'PUT', data }),
     },
     role: {
-      list: () => request({ url: '/api/system/role/list', method: 'GET' }),
-      get: (id: number) => request({ url: `/api/system/role/${id}`, method: 'GET' }),
-      create: (data: any) => request({ url: '/api/system/role', method: 'POST', data }),
-      update: (data: any) => request({ url: '/api/system/role', method: 'PUT', data }),
-      delete: (id: number) => request({ url: `/api/system/role/${id}`, method: 'DELETE' }),
-      getPermissions: (id: number) => request({ url: `/api/system/role/${id}/permissions`, method: 'GET' }),
-      savePermissions: (id: number, data: any) => request({ url: `/api/system/role/${id}/permissions`, method: 'POST', data }),
+      list: () => request({ url: '/system/role/list', method: 'GET' }),
+      get: (id: number) => request({ url: `/system/role/${id}`, method: 'GET' }),
+      create: (data: any) => request({ url: '/system/role', method: 'POST', data }),
+      update: (data: any) => request({ url: '/system/role', method: 'PUT', data }),
+      delete: (id: number) => request({ url: `/system/role/${id}`, method: 'DELETE' }),
+      getPermissions: (id: number) => request({ url: `/system/role/${id}/permissions`, method: 'GET' }),
+      savePermissions: (id: number, data: any) => request({ url: `/system/role/${id}/permissions`, method: 'POST', data }),
     },
     department: {
-      list: () => request({ url: '/api/system/department/list', method: 'GET' }),
-      tree: () => request({ url: '/api/system/department/tree', method: 'GET' }),
-      get: (id: number) => request({ url: `/api/system/department/${id}`, method: 'GET' }),
-      create: (data: any) => request({ url: '/api/system/department', method: 'POST', data }),
-      update: (data: any) => request({ url: '/api/system/department', method: 'PUT', data }),
-      delete: (id: number) => request({ url: `/api/system/department/${id}`, method: 'DELETE' }),
+      list: () => request({ url: '/system/department/list', method: 'GET' }),
+      tree: () => request({ url: '/system/department/tree', method: 'GET' }),
+      get: (id: number) => request({ url: `/system/department/${id}`, method: 'GET' }),
+      create: (data: any) => request({ url: '/system/department', method: 'POST', data }),
+      update: (data: any) => request({ url: '/system/department', method: 'PUT', data }),
+      delete: (id: number) => request({ url: `/system/department/${id}`, method: 'DELETE' }),
     },
   },
 }

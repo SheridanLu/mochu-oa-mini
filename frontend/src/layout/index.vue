@@ -145,7 +145,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useMenuStore } from '@/stores/menu'
-import axios from 'axios'
 import { api } from '@/api'
 import { pushRecentVisit } from '@/utils/recentVisits'
 
@@ -197,9 +196,9 @@ const handleCommand = (command: string) => {
 const loadMenus = async () => {
   if (!menuStore.isLoaded) {
     try {
-      const res = await axios.get('/api/system/menu/tree')
-      if (res.data.code === 200) {
-        menuStore.setMenus(res.data.data || [])
+      const res: any = await api.system.menu.tree()
+      if (res.code === 200) {
+        menuStore.setMenus(res.data || [])
       }
     } catch (e) {
       console.error('加载菜单失败', e)
