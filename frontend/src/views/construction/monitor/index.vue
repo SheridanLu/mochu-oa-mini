@@ -139,12 +139,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { Flag, CircleCheck, CircleClose, Warning, WarningFilled, Clock } from '@element-plus/icons-vue'
+import { api } from '@/api'
 
 const router = useRouter()
 const route = useRoute()
+const ganttId = computed(() => {
+  const raw = route.query.id ?? route.query.ganttId
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : 0
+})
 
 const projectName = ref('XX项目一期')
 const viewMode = ref('week')
@@ -203,7 +210,53 @@ const getProgressColor = (task: any) => {
 }
 
 const handleBack = () => router.back()
-const handleRefresh = () => { ElMessage.success('刷新成功') }
+const applyStats = () => {
+  const ms = milestones.value || []
+  milestoneTotal.value = ms.length
+  milestoneCompleted.value = ms.filter((m: any) => Number(m.progress || 0) >= 100).length
+  const tasks = ms.flatMap((m: any) => m.tasks || [])
+  const totalTask = tasks.length || 1
+  overallProgress.value = Math.round(tasks.reduce((s: number, t: any) => s + Number(t.progress || 0), 0) / totalTask)
+  hiddenAccepted.value = tasks.filter((t: any) => t.hiddenAcceptStatus === 'accepted').length
+  hiddenPending.value = tasks.filter((t: any) => t.hiddenAcceptStatus === 'unaccepted').length
+  hiddenRejected.value = tasks.filter((t: any) => t.hiddenAcceptStatus === 'rejected').length
+  overdueCount.value = tasks.filter((t: any) => t.overdue).length
+}
+
+const loadMonitor = async () => {
+  if (!ganttId.value) {
+    applyStats()
+    return
+  }
+  try {
+    const res: any = await api.gantt.get(ganttId.value)
+    if (res.code === 200 && res.data) {
+      projectName.value = res.data.projectName || projectName.value
+      milestones.value = (res.data.milestones || []).map((m: any) => ({
+        ...m,
+        progress: Number(m.progress || 0),
+        tasks: (m.tasks || []).map((t: any) => ({
+          ...t,
+          progress: Number(t.progress || 0),
+          overdue: Boolean(t.overdue),
+          nearOverdue: Boolean(t.nearOverdue),
+        })),
+      }))
+      applyStats()
+    }
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载进度监控失败')
+  }
+}
+
+const handleRefresh = async () => {
+  await loadMonitor()
+  ElMessage.success('刷新成功')
+}
+
+onMounted(() => {
+  loadMonitor()
+})
 </script>
 
 <style scoped>

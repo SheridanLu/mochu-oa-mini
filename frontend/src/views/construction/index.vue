@@ -77,10 +77,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
+import { api } from '@/api'
 
 const router = useRouter()
 const loading = ref(false)
@@ -105,8 +106,13 @@ const getProgressColor = (progress: number) => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const res = await api.gantt.list({ ...filterForm, page: pagination.page, size: pagination.size })
-    tableData.value = res.data?.list || []
+    const res: any = await api.gantt.page({
+      pageNum: pagination.page,
+      pageSize: pagination.size,
+      projectId: filterForm.projectId || undefined,
+      status: filterForm.status || undefined
+    })
+    tableData.value = res.data?.records || []
     pagination.total = res.data?.total || 0
   } catch (e: any) { ElMessage.error(e.message || '获取列表失败') } 
   finally { loading.value = false }
@@ -131,12 +137,7 @@ const handleSubmit = async (row: any) => {
 const canSubmit = (row: any) => row.status === 1
 const canEditRow = (row: any) => row.status === 1 || row.status === 4
 
-const api = {
-  gantt: {
-    list: async () => ({ code: 200, data: { list: [{ id: 1, projectName: 'XX项目一期', ganttName: '一期施工进度计划', status: 4, progress: 65, startDate: '2026-01-01', endDate: '2026-12-31', creatorName: '项目经理', createTime: '2026-01-05 10:00', updateTime: '2026-04-13 14:30' }], total: 1 } }),
-    submit: async () => ({ code: 200 })
-  }
-}
+onMounted(() => { fetchList() })
 </script>
 
 <style scoped>

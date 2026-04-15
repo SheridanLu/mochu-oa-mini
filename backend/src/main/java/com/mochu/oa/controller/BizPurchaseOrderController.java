@@ -73,6 +73,23 @@ public class BizPurchaseOrderController {
         bizPurchaseOrderService.updateById(order);
         return Result.success(null);
     }
+
+    @PostMapping("/{id}/submit")
+    @Operation(summary = "提交采购订单审批（草稿→待审批）")
+    public Result<Void> submit(@Parameter(description = "订单ID") @PathVariable Long id) {
+        BizPurchaseOrder order = bizPurchaseOrderService.getById(id);
+        if (order == null) {
+            return Result.notFound("采购订单不存在");
+        }
+        if (order.getStatus() == null || order.getStatus() != 1) {
+            return Result.badRequest("仅草稿状态可提交审批");
+        }
+        BizPurchaseOrder upd = new BizPurchaseOrder();
+        upd.setId(id);
+        upd.setStatus(2);
+        bizPurchaseOrderService.updateById(upd);
+        return Result.success(null);
+    }
     
     @DeleteMapping("/{id}")
     @Operation(summary = "删除采购订单")

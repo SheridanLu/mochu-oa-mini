@@ -214,8 +214,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { formatAmount } from '../../../utils/format'
-import api from '../../api'
+import { api } from '@/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -322,7 +321,11 @@ const handleSaveDraft = async () => {
   if (!form.projectId || !form.contractId) { ElMessage.warning('请选择项目和合同'); return }
   try {
     const data = { ...form, status: 1, items: itemList.value }
-    if (isEdit.value) { await api.gantt.update(data) } else { await api.gantt.create(data) }
+    if (isEdit.value) {
+      await api.purchase.update(data)
+    } else {
+      await api.purchase.create(data)
+    }
     ElMessage.success('保存草稿成功')
     router.back()
   } catch (e: any) { ElMessage.error(e.message) }
@@ -331,12 +334,34 @@ const handleSaveDraft = async () => {
 const handleSubmit = async () => {
   if (!validate()) { ElMessage.warning('请修正校验错误'); return }
   try {
+    if (isEdit.value && form.id) {
+      await api.purchase.update({ ...form, status: 2, items: itemList.value })
+      await api.purchase.submit(form.id)
+    } else {
+      const createRes: any = await api.purchase.create({ ...form, status: 2, items: itemList.value })
+      const newId = Number(createRes?.data?.id)
+      if (Number.isFinite(newId) && newId > 0) {
+        await api.purchase.submit(newId)
+      }
+    }
     ElMessage.success('提交成功')
     router.back()
   } catch (e: any) { ElMessage.error(e.message) }
 }
 
-onMounted(() => { if (id.value) console.log('获取详情') })
+onMounted(async () => {
+  if (!id.value) return
+  try {
+    const res: any = await api.purchase.get(id.value)
+    if (res.code === 200 && res.data) {
+      Object.assign(form, res.data)
+      form.id = id.value
+      itemList.value = res.data.items || itemList.value
+    }
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载采购清单失败')
+  }
+})
 </script>
 
 <style scoped>

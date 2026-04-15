@@ -57,7 +57,7 @@
             <el-icon><Tools /></el-icon>
             <span>施工管理</span>
           </template>
-          <el-menu-item index="/construction">甘特图</el-menu-item>
+          <el-menu-item index="/construction/gantt">甘特图</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="/finance">
           <template #title>

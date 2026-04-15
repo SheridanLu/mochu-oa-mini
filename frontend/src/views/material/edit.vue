@@ -81,6 +81,7 @@
 import { ref, reactive, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { api } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -108,9 +109,36 @@ const handleBack = () => router.push('/material')
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
-  ElMessage.success('保存成功')
-  router.push('/material')
+  try {
+    const payload: any = { ...form }
+    if (isEdit.value) {
+      payload.id = Number(route.query.id)
+      await api.material.update(payload)
+    } else {
+      await api.material.create(payload)
+    }
+    ElMessage.success('保存成功')
+    router.push('/material')
+  } catch (e: any) {
+    ElMessage.error(e.message || '保存失败')
+  }
 }
+
+const loadData = async () => {
+  if (!isEdit.value) return
+  try {
+    const id = Number(route.query.id)
+    if (!Number.isFinite(id) || id <= 0) return
+    const res: any = await api.material.get(id)
+    if (res.code === 200 && res.data) {
+      Object.assign(form, res.data)
+    }
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载物资失败')
+  }
+}
+
+loadData()
 </script>
 
 <style scoped>

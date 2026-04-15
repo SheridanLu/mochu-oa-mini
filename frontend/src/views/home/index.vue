@@ -232,7 +232,7 @@ const allEntries = ref([
   { path: '/contract', label: '合同管理', desc: '合同列表查询', icon: 'Document', color: '#67c23a' },
   { path: '/supplier', label: '供应商', desc: '供应商管理', icon: 'Shop', color: '#e6a23c' },
   { path: '/material', label: '物资管理', desc: '物资库存管理', icon: 'Box', color: '#f56c6c' },
-  { path: '/construction', label: '施工管理', desc: '施工进度管理', icon: 'PieChart', color: '#909399' },
+  { path: '/construction/gantt', label: '施工管理', desc: '施工进度管理', icon: 'PieChart', color: '#909399' },
   { path: '/system/user', label: '用户管理', desc: '系统用户管理', icon: 'User', color: '#c71585' }
 ])
 

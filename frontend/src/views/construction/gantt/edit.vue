@@ -275,7 +275,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { InfoFilled, WarningFilled } from '@element-plus/icons-vue'
-import api from '../../../api'
+import { api } from '@/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -400,10 +400,18 @@ const handleSaveDraft = async () => {
 const handleSubmit = async () => {
   if (!validate()) { ElMessage.warning('请修正校验错误'); return }
   try {
-    const data = { ...form, milestones: milestoneList.value, tasks: taskList.value }
-    if (!isEdit.value) {
-      await api.gantt.create(data)
-      ElMessage.success('创建成功')
+    const data = { ...form, milestones: milestoneList.value, tasks: taskList.value, status: 2 }
+    if (isEdit.value && form.id) {
+      await api.gantt.update(data)
+      await api.gantt.submit(form.id)
+      ElMessage.success('提交审批成功')
+    } else {
+      const res: any = await api.gantt.create(data)
+      const newId = Number(res?.data?.id)
+      if (Number.isFinite(newId) && newId > 0) {
+        await api.gantt.submit(newId)
+      }
+      ElMessage.success('创建并提交成功')
     }
     router.back()
   } catch (e: any) { ElMessage.error(e.message) }
@@ -415,6 +423,7 @@ const fetchDetail = async () => {
     const res = await api.gantt.get(id.value)
     if (res.code === 200) {
       Object.assign(form, res.data)
+      form.id = id.value
       milestoneList.value = res.data.milestones || []
       taskList.value = res.data.tasks || []
     }

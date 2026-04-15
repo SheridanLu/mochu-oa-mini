@@ -87,6 +87,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { api } from '@/api'
 
 const router = useRouter()
 
@@ -108,8 +109,14 @@ const getStatusText = (status: number) => ['', '草稿', '待审批', '已审批
 const fetchList = async () => {
   loading.value = true
   try {
-    const res = await api.purchase.list({ ...filterForm, page: pagination.page, size: pagination.size })
-    tableData.value = res.data?.list || []
+    const params: Record<string, any> = {
+      pageNum: pagination.page,
+      pageSize: pagination.size,
+      projectId: filterForm.projectId || undefined,
+      status: filterForm.status || undefined
+    }
+    const res: any = await api.purchase.page(params)
+    tableData.value = res.data?.records || []
     pagination.total = res.data?.total || 0
   } catch (e: any) { ElMessage.error(e.message || '获取列表失败') } 
   finally { loading.value = false }
@@ -143,14 +150,6 @@ const handleDelete = async (row: any) => {
 }
 
 onMounted(() => { fetchList() })
-
-const api = {
-  purchase: {
-    list: async () => ({ code: 200, data: { list: [{ id: 1, orderNo: 'CGQD202604001', contractNo: 'HT001', projectName: 'XX项目', status: 1, sourceType: 2, totalBudget: 250000, creatorName: '张三', createTime: '2026-04-13 10:30' }], total: 1 } }),
-    submit: async () => ({ code: 200 }),
-    delete: async () => ({ code: 200 })
-  }
-}
 </script>
 
 <style scoped>

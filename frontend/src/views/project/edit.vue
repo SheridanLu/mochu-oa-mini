@@ -158,6 +158,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
+import { api } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -248,9 +249,9 @@ const handleSubmit = async () => {
     form.city = form.location[1] || ''
     
     if (isEdit.value) {
-      await request({ url: '/api/project', method: 'PUT', data: form })
+      await api.project.update(form)
     } else {
-      await request({ url: '/api/project', method: 'POST', data: form })
+      await api.project.create(form)
     }
     ElMessage.success('保存成功')
     router.push('/project')

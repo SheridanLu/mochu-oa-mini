@@ -69,9 +69,10 @@
 </template>
 
 <script setup lang='ts'>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { api } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -79,6 +80,7 @@ const isEdit = computed(() => !!route.query.id)
 const formRef = ref()
 
 const form = reactive({
+  id: undefined as number | undefined,
   reporterName: '',
   departmentName: '',
   projectName: '',
@@ -99,9 +101,37 @@ const handleBack = () => router.push('/finance/expense')
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
-  ElMessage.success('保存成功')
-  router.push('/finance/expense')
+  try {
+    if (isEdit.value && form.id) {
+      await api.expense.report.update(form)
+    } else {
+      await api.expense.report.create(form)
+    }
+    ElMessage.success('保存成功')
+    router.push('/finance/expense')
+  } catch (e: any) {
+    ElMessage.error(e.message || '保存失败')
+  }
 }
+
+const loadDetail = async () => {
+  if (!isEdit.value) return
+  try {
+    const id = Number(route.query.id)
+    if (!Number.isFinite(id) || id <= 0) return
+    const res: any = await api.expense.report.get(id)
+    if (res.code === 200 && res.data) {
+      Object.assign(form, res.data)
+      form.id = id
+    }
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载报销单失败')
+  }
+}
+
+onMounted(() => {
+  loadDetail()
+})
 </script>
 
 <style scoped>
